@@ -116,6 +116,116 @@
     return trimmed ? trimmed.split(/\s+/).length : 0;
   }
 
+  /* Turn what the model returned into the stored profile. The model is not
+     asked to invent cross-referenced ids; it returns bullets inline and we
+     number them here, so the ids are ours and stay stable. */
+  function buildProfile(extracted, source, previous) {
+    var now = new Date().toISOString();
+    var bullets = {};
+    var n = 0;
+
+    var sections = (extracted.sections || []).map(function (s, si) {
+      return {
+        id: 's' + (si + 1),
+        kind: s.kind,
+        title: s.title,
+        items: (s.items || []).map(function (item, ii) {
+          return {
+            id: 's' + (si + 1) + 'i' + (ii + 1),
+            heading: item.heading,
+            subheading: item.subheading || '',
+            dates: { start: item.dateStart || '', end: item.dateEnd || '' },
+            bullets: (item.bullets || []).map(function (b) {
+              var id = 'b' + (++n);
+              bullets[id] = {
+                id: id,
+                text: b.text,
+                tags: b.tags || [],
+                roles: b.roles || [],
+                numbers: (b.numbers || []).map(function (num) {
+                  return { value: num.value, what: num.what, source: 'resume' };
+                }),
+                source: { type: 'resume', jobId: null, date: now },
+                retired: false
+              };
+              return id;
+            })
+          };
+        })
+      };
+    });
+
+    // Gap answers from earlier jobs are not in the PDF, so carry them across a
+    // re-import rather than throwing away work the person already did.
+    if (previous && previous.bullets) {
+      Object.keys(previous.bullets).forEach(function (id) {
+        var b = previous.bullets[id];
+        if (b.source && b.source.type === 'gap') bullets[id] = b;
+      });
+    }
+
+    return {
+      version: previous ? (previous.version || 1) + 1 : 1,
+      updatedAt: now,
+      source: source,
+      basics: extracted.basics || {},
+      summary: extracted.summary || '',
+      skills: extracted.skills || [],
+      sections: sections,
+      bullets: bullets,
+      parseReview: (extracted.parseReview || []).map(function (r, i) {
+        return { id: 'r' + (i + 1), field: r.field, note: r.note, resolved: false };
+      })
+    };
+  }
+
+  function liveBullets(profile) {
+    if (!profile || !profile.bullets) return [];
+    return Object.keys(profile.bullets)
+      .map(function (id) { return profile.bullets[id]; })
+      .filter(function (b) { return !b.retired; });
+  }
+
+  /* How the inventory is handed to the analysis call: one line per bullet,
+     carrying the id so the model can point back at its evidence. */
+  function inventoryLines(profile) {
+    var lines = [];
+    (profile.sections || []).forEach(function (section) {
+      (section.items || []).forEach(function (item) {
+        (item.bullets || []).forEach(function (id) {
+          var b = profile.bullets[id];
+          if (b && !b.retired) {
+            lines.push(id + ': [' + section.kind + ' · ' + item.heading + '] ' + b.text);
+          }
+        });
+      });
+    });
+    liveBullets(profile).forEach(function (b) {
+      if (b.source && b.source.type === 'gap') lines.push(b.id + ': [from your answer] ' + b.text);
+    });
+    return lines.join('\n');
+  }
+
+  function skillLines(profile) {
+    return (profile.skills || []).map(function (g) {
+      return g.group + ': ' + (g.items || []).join(', ');
+    }).join('\n');
+  }
+
+  /* Weighted coverage: the share of the ad's weight that the person evidences.
+     Partial counts half, because "mentioned once in a skills list" is not the
+     same as "a bullet proves it", and pretending otherwise inflates the score. */
+  function coverage(requirements) {
+    var total = 0, got = 0;
+    (requirements || []).forEach(function (r) {
+      var w = r.weight || 0;
+      total += w;
+      if (r.status === 'evidenced') got += w;
+      else if (r.status === 'partial') got += w / 2;
+    });
+    return total ? got / total : 0;
+  }
+
   /* ISO 8601 strings compare correctly with >, so no date parsing is needed.
      A record with no timestamp always loses to one that has a timestamp. */
   function newerOf(a, b) {
@@ -173,6 +283,11 @@
     newId: newId,
     newJob: newJob,
     wordCount: wordCount,
+    buildProfile: buildProfile,
+    liveBullets: liveBullets,
+    inventoryLines: inventoryLines,
+    skillLines: skillLines,
+    coverage: coverage,
     newerOf: newerOf,
     mergeRecords: mergeRecords,
     mergeWorkspace: mergeWorkspace,

@@ -4,6 +4,7 @@ workspace/
 fixtures/
 .env
 *.key
+*.txt
 
 # generated design canvas (2 MiB editor payload); rebuild from design/*.dc.html
 design/resume-tailor.html

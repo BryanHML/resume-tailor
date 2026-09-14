@@ -10,7 +10,7 @@
 <!-- ?v= is a cache buster. python -m http.server sends no cache headers, so Chrome
      caches these heuristically and can keep serving an old copy after you pull.
      Bump it when styles.css, core.js or app.js change. -->
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 
@@ -181,8 +181,9 @@
       <aside class="panel panel-right">
         <div class="panel-head">
           <h2>Selected bullet</h2>
+          <span class="mono muted" id="bullet-id"></span>
         </div>
-        <div class="panel-body">
+        <div class="panel-body" id="bullet-inspector">
           <p class="empty-note">Select a bullet to see its text, the numbers on record behind it and where each one came from.</p>
         </div>
         <div class="panel-foot">
@@ -190,7 +191,9 @@
             <h2 class="sm">Parse review</h2>
             <span class="mono muted" id="review-count">0 to confirm</span>
           </div>
-          <p class="empty-note">Anything the import could not read with confidence is listed here.</p>
+          <div class="panel-body" id="parse-review">
+            <p class="empty-note">Anything the import could not read with confidence is listed here.</p>
+          </div>
         </div>
       </aside>
 
@@ -206,15 +209,16 @@
       </div>
       <div class="metric">
         <div class="metric-label">Detected role</div>
-        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">no job open</span></div>
+        <div class="metric-value"><span class="mono num" id="m-role">&ndash;</span><span class="mono sub" id="m-role-sub">no job open</span></div>
       </div>
       <div class="metric">
         <div class="metric-label">Coverage</div>
-        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">target 75&ndash;80</span></div>
+        <div class="metric-value"><span class="mono num" id="m-coverage">&ndash;</span><span class="mono sub">target 75&ndash;80</span></div>
+        <div class="bar"><div id="m-coverage-bar"></div></div>
       </div>
       <div class="metric">
         <div class="metric-label">Gaps</div>
-        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">open questions</span></div>
+        <div class="metric-value"><span class="mono num" id="m-gaps">&ndash;</span><span class="mono sub" id="m-gaps-sub">open questions</span></div>
       </div>
     </div>
     <div class="panels panels-job">
@@ -262,8 +266,13 @@
       </div>
 
       <aside class="panel panel-right">
-        <div class="panel-head"><h2>Requirements</h2></div>
-        <div class="panel-body"><p class="empty-note">Analyse an ad to see its requirements, their weight, how often each appears, and what in your profile evidences it.</p></div>
+        <div class="panel-head">
+          <h2>Requirements</h2>
+          <span class="mono muted" id="req-count"></span>
+        </div>
+        <div id="requirements">
+          <div class="panel-body"><p class="empty-note">Analyse an ad to see its requirements, their weight, how often each appears, and what in your profile evidences it.</p></div>
+        </div>
       </aside>
     </div>
   </section>
@@ -313,7 +322,9 @@
 
 <div class="toast" id="status" role="status" aria-live="polite" hidden></div>
 
-<script src="core.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="core.js?v=5"></script>
+<script src="prompts.js?v=5"></script>
+<script src="claude.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

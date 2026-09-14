@@ -126,4 +126,77 @@ test('byNewest sorts most recently touched first', function () {
   );
 });
 
+test('buildProfile numbers bullets itself and keeps them addressable', function () {
+  var p = RT.buildProfile({
+    basics: { name: 'A' },
+    skills: [{ group: 'Languages', items: ['Python'] }],
+    sections: [{
+      kind: 'experience', title: 'EXPERIENCE',
+      items: [{
+        heading: 'Analyst', subheading: 'Co', dateStart: '03/2026', dateEnd: 'Present',
+        bullets: [
+          { text: 'Did a thing with 40,000 rows.', tags: ['sql'], roles: ['DA'], numbers: [{ value: '40,000', what: 'rows' }] },
+          { text: 'Did another thing.', tags: [], roles: [], numbers: [] }
+        ]
+      }]
+    }],
+    parseReview: [{ field: 'phone', note: 'check it' }]
+  }, { type: 'pdf', filename: 'r.pdf' });
+
+  assert.strictEqual(Object.keys(p.bullets).length, 2);
+  assert.deepStrictEqual(p.sections[0].items[0].bullets, ['b1', 'b2'], 'items reference bullets by id');
+  assert.strictEqual(p.bullets.b1.numbers[0].source, 'resume');
+  assert.strictEqual(p.bullets.b1.retired, false);
+  assert.strictEqual(p.parseReview[0].resolved, false);
+  assert.strictEqual(p.version, 1);
+  assert.strictEqual(p.sections[0].items[0].dates.end, 'Present');
+});
+
+test('re-importing a resume keeps bullets that came from gap answers', function () {
+  var previous = {
+    version: 2,
+    bullets: {
+      b1: { id: 'b1', text: 'from the old pdf', source: { type: 'resume' }, retired: false },
+      g7: { id: 'g7', text: 'Used Snowflake in a subject.', source: { type: 'gap', jobId: 'job-1' }, retired: false }
+    }
+  };
+  var p = RT.buildProfile({ basics: {}, skills: [], sections: [], parseReview: [] }, { type: 'pdf' }, previous);
+  assert.ok(p.bullets.g7, 'a gap answer survives the re-import');
+  assert.ok(!p.bullets.b1 || p.bullets.b1.text !== 'from the old pdf', 'old resume bullets are replaced');
+  assert.strictEqual(p.version, 3, 'version increments');
+});
+
+test('coverage counts partial as half and never divides by zero', function () {
+  var reqs = [
+    { weight: 10, status: 'evidenced' },
+    { weight: 10, status: 'partial' },
+    { weight: 10, status: 'missing' }
+  ];
+  assert.strictEqual(Math.round(RT.coverage(reqs) * 100), 50);
+  assert.strictEqual(RT.coverage([]), 0);
+  assert.strictEqual(RT.coverage(undefined), 0);
+  assert.strictEqual(RT.coverage([{ weight: 5, status: 'evidenced' }]), 1);
+});
+
+test('inventoryLines gives the model an id it can point back at', function () {
+  var p = RT.buildProfile({
+    basics: {}, skills: [],
+    sections: [{ kind: 'experience', title: 'E', items: [{ heading: 'Analyst', subheading: '', dateStart: '', dateEnd: '', bullets: [{ text: 'Wrote SQL.', tags: [], roles: [], numbers: [] }] }] }],
+    parseReview: []
+  }, {});
+  var lines = RT.inventoryLines(p);
+  assert.ok(lines.indexOf('b1: [experience · Analyst] Wrote SQL.') === 0, lines);
+});
+
+test('retired bullets stay out of the inventory sent to the model', function () {
+  var p = RT.buildProfile({
+    basics: {}, skills: [],
+    sections: [{ kind: 'experience', title: 'E', items: [{ heading: 'A', subheading: '', dateStart: '', dateEnd: '', bullets: [{ text: 'One.', tags: [], roles: [], numbers: [] }, { text: 'Two.', tags: [], roles: [], numbers: [] }] }] }],
+    parseReview: []
+  }, {});
+  p.bullets.b1.retired = true;
+  assert.strictEqual(RT.liveBullets(p).length, 1);
+  assert.ok(RT.inventoryLines(p).indexOf('b1:') === -1, 'a retired bullet is not offered as evidence');
+});
+
 if (!process.exitCode) console.log('\nall passing');

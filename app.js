@@ -483,6 +483,15 @@
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
 
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  }
+
+  var selectedBulletId = null;
+
   function renderInventory() {
     var host = $('inventory');
     host.textContent = '';
@@ -498,58 +507,283 @@
     host.className = 'doc doc-pad';
 
     if (stagedResume) {
-      var card = document.createElement('div');
-      card.className = 'filecard';
-
-      var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      icon.setAttribute('width', '20'); icon.setAttribute('height', '20');
-      icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('fill', 'none');
-      icon.setAttribute('stroke', '#8f4222'); icon.setAttribute('stroke-width', '2');
-      icon.setAttribute('stroke-linecap', 'round'); icon.setAttribute('stroke-linejoin', 'round');
-      var p1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      p1.setAttribute('d', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z');
-      var p2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      p2.setAttribute('d', 'M14 2v6h6');
-      icon.appendChild(p1); icon.appendChild(p2);
-      card.appendChild(icon);
-
-      var grow = document.createElement('div');
-      grow.className = 'grow';
-      var name = document.createElement('div');
-      name.className = 'name';
-      name.textContent = stagedResume.name;
-      var meta = document.createElement('div');
-      meta.className = 'meta';
-      meta.textContent = formatSize(stagedResume.size) + ' · ready to extract';
-      grow.appendChild(name);
-      grow.appendChild(meta);
+      var card = el('div', 'filecard');
+      var grow = el('div', 'grow');
+      grow.appendChild(el('div', 'name', stagedResume.name));
+      grow.appendChild(el('div', 'meta', formatSize(stagedResume.size)
+        + (ws.profile ? ' · will replace the profile below' : ' · ready to extract')));
       card.appendChild(grow);
 
-      var remove = document.createElement('button');
+      var remove = el('button', 'link-btn', 'Remove');
       remove.type = 'button';
-      remove.className = 'link-btn';
-      remove.textContent = 'Remove';
-      remove.addEventListener('click', function () {
-        stagedResume = null;
-        renderInventory();
-      });
+      remove.addEventListener('click', function () { stagedResume = null; renderInventory(); });
       card.appendChild(remove);
       host.appendChild(card);
 
-      var extract = document.createElement('button');
+      var actions = el('div', 'form-actions');
+      var extract = el('button', 'btn btn-accent', 'Extract profile');
       extract.type = 'button';
-      extract.className = 'btn btn-accent';
-      extract.textContent = 'Extract profile';
-      extract.disabled = true;
-      host.appendChild(extract);
+      extract.disabled = !apiKey || busy;
+      extract.addEventListener('click', function () { extractProfile(extract); });
+      actions.appendChild(extract);
+      host.appendChild(actions);
 
-      var note = document.createElement('p');
-      note.className = 'note';
-      note.textContent = apiKey
-        ? 'Extraction is the next step in the build. Your file is loaded and waiting.'
-        : 'Add your API key on the left, then extraction runs here. Extraction is the next step in the build.';
+      var note = el('p', 'note', apiKey
+        ? 'Runs one call on ' + ws.settings.model.replace('claude-', '') + '. Bullets are copied word for word; anything uncertain lands in the parse review.'
+        : 'Add your API key on the left to run the extraction.');
       host.appendChild(note);
     }
+
+    if (!ws.profile) return;
+
+    var p = ws.profile;
+
+    var header = el('div', 'inv-header');
+    header.appendChild(el('div', 'inv-name', p.basics.name || 'Unnamed'));
+    var contact = [p.basics.city, p.basics.state, p.basics.phone, p.basics.email, p.basics.linkedin]
+      .filter(Boolean).join(' · ');
+    header.appendChild(el('div', 'inv-contact', contact));
+    host.appendChild(header);
+
+    if (p.skills && p.skills.length) {
+      var skillBlock = el('div', 'inv-section');
+      skillBlock.appendChild(el('div', 'inv-heading', 'Skills'));
+      p.skills.forEach(function (group) {
+        var row = el('div', 'inv-skillrow');
+        row.appendChild(el('span', 'inv-skillgroup', group.group + ': '));
+        row.appendChild(document.createTextNode(group.items.join(' · ')));
+        skillBlock.appendChild(row);
+      });
+      host.appendChild(skillBlock);
+    }
+
+    (p.sections || []).forEach(function (section) {
+      var block = el('div', 'inv-section');
+      block.appendChild(el('div', 'inv-heading', section.title));
+      (section.items || []).forEach(function (item) {
+        var head = el('div', 'inv-item');
+        var left = el('div', 'inv-item-name');
+        left.appendChild(el('strong', null, item.heading));
+        if (item.subheading) left.appendChild(document.createTextNode(' · ' + item.subheading));
+        head.appendChild(left);
+        var dates = [item.dates.start, item.dates.end].filter(Boolean).join(' – ');
+        if (dates) head.appendChild(el('span', 'inv-dates mono', dates));
+        block.appendChild(head);
+
+        (item.bullets || []).forEach(function (id) {
+          var b = p.bullets[id];
+          if (!b || b.retired) return;
+          block.appendChild(bulletBlock(b));
+        });
+      });
+      host.appendChild(block);
+    });
+
+    var fromGaps = RT.liveBullets(p).filter(function (b) { return b.source && b.source.type === 'gap'; });
+    if (fromGaps.length) {
+      var gapBlock = el('div', 'inv-section');
+      gapBlock.appendChild(el('div', 'inv-heading', 'From your answers'));
+      fromGaps.forEach(function (b) { gapBlock.appendChild(bulletBlock(b)); });
+      host.appendChild(gapBlock);
+    }
+  }
+
+  function bulletBlock(b) {
+    var row = el('button', 'inv-bullet');
+    row.type = 'button';
+    if (b.id === selectedBulletId) row.setAttribute('aria-current', 'true');
+    row.appendChild(el('span', 'inv-dot', '•'));
+
+    var body = el('div', 'grow');
+    body.appendChild(el('div', null, b.text));
+    if (b.tags.length || b.roles.length) {
+      var tags = el('div', 'inv-tags mono');
+      b.roles.forEach(function (r) { tags.appendChild(el('span', 'tag role', r)); });
+      b.tags.slice(0, 6).forEach(function (t) { tags.appendChild(el('span', 'tag', t)); });
+      body.appendChild(tags);
+    }
+    row.appendChild(body);
+
+    if (!b.numbers.length) row.appendChild(el('span', 'flag amber mono', 'no metric'));
+    row.addEventListener('click', function () {
+      selectedBulletId = b.id;
+      renderInventory();
+      renderBulletInspector();
+    });
+    return row;
+  }
+
+  function renderBulletInspector() {
+    var host = $('bullet-inspector');
+    host.textContent = '';
+    var b = ws.profile && selectedBulletId ? ws.profile.bullets[selectedBulletId] : null;
+    $('bullet-id').textContent = b ? b.id : '';
+
+    if (!b) {
+      host.appendChild(el('p', 'empty-note',
+        'Select a bullet to see its text, the numbers on record behind it and where each one came from.'));
+      return;
+    }
+
+    var text = el('div', 'field');
+    text.appendChild(el('span', 'field-label mono', 'text'));
+    text.appendChild(el('div', 'readonly-box', b.text));
+    host.appendChild(text);
+
+    var nums = el('div', 'field');
+    nums.appendChild(el('span', 'field-label mono', 'numbers on record'));
+    if (b.numbers.length) {
+      var grid = el('div', 'kv');
+      b.numbers.forEach(function (n) {
+        grid.appendChild(el('div', 'kv-key mono', n.value));
+        grid.appendChild(el('div', null, n.what + ' · from ' + n.source));
+      });
+      nums.appendChild(grid);
+    } else {
+      nums.appendChild(el('p', 'note', 'No number in this bullet. Tailoring will never add one, so if there is a real figure behind it, add it here.'));
+    }
+    host.appendChild(nums);
+
+    var meta = el('div', 'field');
+    meta.appendChild(el('span', 'field-label mono', 'tags and roles'));
+    var chips = el('div', 'inv-tags mono');
+    b.roles.forEach(function (r) { chips.appendChild(el('span', 'tag role', r)); });
+    b.tags.forEach(function (t) { chips.appendChild(el('span', 'tag', t)); });
+    if (!b.roles.length && !b.tags.length) chips.appendChild(el('span', 'muted', 'none'));
+    meta.appendChild(chips);
+    host.appendChild(meta);
+
+    var src = el('div', 'field');
+    src.appendChild(el('span', 'field-label mono', 'source'));
+    src.appendChild(el('div', null, b.source.type === 'gap'
+      ? 'Your answer to a gap question'
+      : 'Your resume, ' + (ws.profile.source.filename || 'imported PDF')));
+    host.appendChild(src);
+  }
+
+  function renderParseReview() {
+    var host = $('parse-review');
+    host.textContent = '';
+    var items = ws.profile && ws.profile.parseReview ? ws.profile.parseReview : [];
+    var open = items.filter(function (r) { return !r.resolved; });
+    $('review-count').textContent = open.length + ' to confirm';
+
+    if (!items.length) {
+      host.appendChild(el('p', 'empty-note', 'Anything the import could not read with confidence is listed here.'));
+      return;
+    }
+
+    items.forEach(function (r) {
+      var row = el('div', 'review-row' + (r.resolved ? ' done' : ''));
+      var body = el('div', 'grow');
+      body.appendChild(el('div', 'review-field mono', r.field));
+      body.appendChild(el('div', 'review-note', r.note));
+      row.appendChild(body);
+      var mark = el('button', 'link-btn', r.resolved ? 'undo' : 'got it');
+      mark.type = 'button';
+      mark.addEventListener('click', function () {
+        r.resolved = !r.resolved;
+        RT.stamp(ws.profile);
+        scheduleSave();
+        renderParseReview();
+        renderProfileStrip();
+      });
+      row.appendChild(mark);
+      host.appendChild(row);
+    });
+  }
+
+  /* --------------------------------------------------------- running a call
+     These take 30 to 90 seconds. Lock the button, say what is happening, and
+     always report what it cost, because it is the person's own money. */
+
+  var busy = false;
+
+  function runCall(label, button, build, onResult) {
+    if (busy) return;
+    if (!apiKey) { toast('Add your API key on the Profile screen first.', true); return; }
+    busy = true;
+    var original = button.textContent;
+    button.disabled = true;
+    button.textContent = label + '...';
+
+    var model = ws.settings.model;
+    var started = Date.now();
+
+    Promise.resolve(build()).then(function (body) {
+      return RTClaude.send(apiKey, body, function () {
+        var secs = Math.round((Date.now() - started) / 1000);
+        button.textContent = label + '... ' + secs + 's';
+      });
+    }).then(function (message) {
+      var result = RTClaude.readJson(message);
+      var spent = RTClaude.cost(model, message.usage);
+      onResult(result, message);
+      toast(label + ' finished in ' + Math.round((Date.now() - started) / 1000) + 's · '
+        + RTClaude.money(spent) + ' on ' + model.replace('claude-', ''));
+    }).catch(function (err) {
+      toast(err.message, true);
+    }).then(function () {
+      busy = false;
+      button.disabled = false;
+      button.textContent = original;
+      render();
+    });
+  }
+
+  function extractProfile(button) {
+    runCall('Extracting', button, function () {
+      return RTClaude.extractRequest({
+        prompts: RTPrompts,
+        model: ws.settings.model,
+        effort: ws.settings.effort,
+        pdfBase64: stagedResume.base64,
+        careerStage: ws.settings.careerStage
+      });
+    }, function (extracted) {
+      ws.profile = RT.buildProfile(
+        extracted,
+        { type: 'pdf', filename: stagedResume.name, importedAt: new Date().toISOString() },
+        ws.profile
+      );
+      stagedResume = null;
+      selectedBulletId = null;
+      flushSave();
+    });
+  }
+
+  function analyseAd(button) {
+    var job = openJobId ? findJob(openJobId) : null;
+    if (!job) return;
+    if (!ws.profile) { toast('Import your resume first, so there is something to compare the ad against.', true); return; }
+
+    runCall('Analysing', button, function () {
+      return RTClaude.analyseRequest({
+        prompts: RTPrompts,
+        model: ws.settings.model,
+        effort: ws.settings.effort,
+        inventory: RT.inventoryLines(ws.profile),
+        skills: RT.skillLines(ws.profile),
+        adText: job.adText
+      });
+    }, function (analysis) {
+      job.role = analysis.role;
+      job.shape = analysis.shape;
+      job.analysis = {
+        requirements: analysis.requirements.map(function (r, i) {
+          return Object.assign({ id: 'r' + (i + 1) }, r);
+        }),
+        predicted: analysis.predicted || [],
+        adInstructions: analysis.adInstructions || [],
+        coverageBefore: RT.coverage(analysis.requirements)
+      };
+      job.gaps = (analysis.gaps || []).map(function (g, i) {
+        return { id: 'q' + (i + 1), requirement: g.requirement, question: g.question, answer: '', skipped: false, bulletId: null };
+      });
+      job.status = 'analysed';
+      RT.stamp(job);
+      flushSave();
+    });
   }
 
   function buildEmpty(heading, paragraphs) {
@@ -694,17 +928,206 @@
     }
 
     var words = RT.wordCount($('job-ad').value);
+    var job = openJobId ? findJob(openJobId) : null;
     $('job-wordcount').textContent = words + (words === 1 ? ' word' : ' words');
     $('delete-job').hidden = !openJobId;
-    $('analyse-job').disabled = true;
+
+    var analyse = $('analyse-job');
+    analyse.disabled = busy || !apiKey || !ws.profile || words < 20;
+    analyse.textContent = job && job.analysis ? 'Re-analyse ad' : 'Analyse ad';
 
     var hint = $('job-hint');
-    if (!words) hint.textContent = 'Paste the whole ad. Analysis reads it on your machine and sends it to Claude with your key.';
-    else if (words < 80) hint.textContent = 'That is short for an ad. More text gives a better requirements table.';
+    if (!words) hint.textContent = 'Paste the whole ad. It is read here and sent to Claude with your key, nowhere else.';
+    else if (words < 20) hint.textContent = 'That is too short to analyse. Paste the whole ad.';
+    else if (!ws.profile) hint.textContent = 'Import your resume on the Profile screen first, so the ad has something to be compared against.';
     else if (!apiKey) hint.textContent = 'Add your API key on the Profile screen to analyse this ad.';
-    else hint.textContent = 'Saved. Analysis is the next step in the build.';
+    else if (words < 80) hint.textContent = 'That is short for an ad. More text gives a better requirements table.';
+    else if (job && job.analysis) hint.textContent = 'Analysed. Re-analysing replaces the requirements and the gap questions.';
+    else hint.textContent = 'Ready. One call on ' + ws.settings.model.replace('claude-', '') + '.';
 
+    renderJobStrip(job);
+    renderRequirements(job);
     renderCounts();
+  }
+
+  function renderJobStrip(job) {
+    var a = job && job.analysis;
+    $('m-role').textContent = job && job.role ? job.role : '–';
+    $('m-role-sub').textContent = job && job.shape
+      ? (job.shape.length > 60 ? job.shape.slice(0, 57) + '...' : job.shape)
+      : (job ? 'not analysed' : 'no job open');
+    if (job && job.shape) $('m-role-sub').title = job.shape;
+
+    var pct = a ? Math.round(a.coverageBefore * 100) : null;
+    $('m-coverage').textContent = pct === null ? '–' : pct + '%';
+    var bar = $('m-coverage-bar');
+    bar.style.width = (pct || 0) + '%';
+    bar.style.background = pct === null ? 'transparent'
+      : pct >= 75 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
+
+    var open = job ? (job.gaps || []).filter(function (g) { return !g.answer && !g.skipped; }).length : 0;
+    $('m-gaps').textContent = job && job.gaps ? String(open) : '–';
+    $('m-gaps-sub').textContent = job && job.gaps && job.gaps.length
+      ? open + ' of ' + job.gaps.length + ' unanswered'
+      : 'open questions';
+  }
+
+  function renderRequirements(job) {
+    var host = $('requirements');
+    host.textContent = '';
+    var a = job && job.analysis;
+    $('req-count').textContent = a ? a.requirements.length + ' from the ad' : '';
+
+    if (!a) {
+      var body = el('div', 'panel-body');
+      body.appendChild(el('p', 'empty-note',
+        'Analyse an ad to see its requirements, their weight, how often each appears, and what in your profile evidences it.'));
+      host.appendChild(body);
+      return;
+    }
+
+    if (a.adInstructions && a.adInstructions.length) {
+      var callout = el('div', 'callout');
+      callout.appendChild(el('div', 'callout-head', 'The ad asks you to do this'));
+      a.adInstructions.forEach(function (x) {
+        var row = el('div', 'callout-row');
+        row.appendChild(el('div', null, x.instruction));
+        row.appendChild(el('div', 'callout-quote', '“' + x.quote + '”'));
+        callout.appendChild(row);
+      });
+      host.appendChild(callout);
+    }
+
+    var head = el('div', 'reqhead mono');
+    ['requirement', 'wt', 'ad', 'status'].forEach(function (label, i) {
+      head.appendChild(el('div', i === 0 ? null : 'right', label));
+    });
+    host.appendChild(head);
+
+    a.requirements.slice().sort(function (x, y) { return y.weight - x.weight; }).forEach(function (r) {
+      var row = el('div', 'reqrow mono');
+      var name = el('div', 'reqname');
+      name.textContent = r.name;
+      name.title = r.name + (r.required ? ' (required)' : ' (preferred)')
+        + (r.evidence && r.evidence.length ? '\nEvidence: ' + r.evidence.join(', ') : '\nNo evidence in your profile.');
+      if (!r.required) name.appendChild(el('span', 'pref mono', ' pref'));
+      row.appendChild(name);
+      row.appendChild(el('div', 'right', String(r.weight)));
+      row.appendChild(el('div', 'right', String(r.adCount)));
+      var status = el('div', 'right');
+      status.appendChild(el('span', 'tag ' + r.status, r.status));
+      row.appendChild(status);
+      row.addEventListener('click', function () { showEvidence(r); });
+      host.appendChild(row);
+    });
+
+    if (a.predicted && a.predicted.length) {
+      var pred = el('div', 'predicted mono');
+      pred.appendChild(el('span', 'muted', 'expected but not in the ad: '));
+      pred.appendChild(document.createTextNode(a.predicted.join(' · ')));
+      host.appendChild(pred);
+    }
+
+    if (job.gaps && job.gaps.length) {
+      var gapHead = el('div', 'panel-head');
+      gapHead.appendChild(el('h2', 'sm', 'Gap questions'));
+      var openCount = job.gaps.filter(function (g) { return !g.answer && !g.skipped; }).length;
+      gapHead.appendChild(el('span', 'mono muted', openCount + ' open'));
+      host.appendChild(gapHead);
+
+      var gapBody = el('div', 'panel-body');
+      job.gaps.forEach(function (g) {
+        gapBody.appendChild(gapCard(job, g));
+      });
+      host.appendChild(gapBody);
+    }
+  }
+
+  function gapCard(job, g) {
+    var card = el('div', 'gapcard' + (g.answer ? ' answered' : g.skipped ? ' skipped' : ''));
+    var top = el('div', 'gaptop');
+    top.appendChild(el('span', 'gapid mono', g.id.toUpperCase()));
+    top.appendChild(el('div', 'grow', g.question));
+    card.appendChild(top);
+
+    var box = document.createElement('textarea');
+    box.className = 'gapanswer';
+    box.rows = 2;
+    box.value = g.answer;
+    box.placeholder = 'Answer in your own words, or skip. Nothing is added unless you write it here.';
+    box.addEventListener('input', function () {
+      g.answer = this.value;
+      if (this.value.trim()) g.skipped = false;
+      RT.stamp(job);
+      scheduleSave();
+    });
+    // Only re-render on blur; re-rendering per keystroke would steal focus.
+    box.addEventListener('blur', function () {
+      saveGapAsBullet(job, g);
+      renderJobs();
+      // The answer just became a profile bullet, so the Profile screen's
+      // inventory and counts are now stale too.
+      renderProfileStrip();
+      renderInventory();
+    });
+    card.appendChild(box);
+
+    var foot = el('div', 'gapfoot');
+    foot.appendChild(el('span', 'mono muted', g.requirement));
+    var skip = el('button', 'link-btn', g.skipped ? 'unskip' : 'skip');
+    skip.type = 'button';
+    skip.addEventListener('click', function () {
+      g.skipped = !g.skipped;
+      RT.stamp(job);
+      scheduleSave();
+      renderJobs();
+    });
+    foot.appendChild(skip);
+    card.appendChild(foot);
+    return card;
+  }
+
+  /* An answered gap becomes a real bullet in the profile, so the next ad that
+     asks the same thing already has the evidence. */
+  function saveGapAsBullet(job, g) {
+    if (!ws.profile) return;
+    var answer = (g.answer || '').trim();
+
+    if (!answer) {
+      if (g.bulletId && ws.profile.bullets[g.bulletId]) {
+        delete ws.profile.bullets[g.bulletId];
+        g.bulletId = null;
+        RT.stamp(ws.profile);
+        scheduleSave();
+      }
+      return;
+    }
+
+    var id = g.bulletId || RT.newId('gap');
+    g.bulletId = id;
+    ws.profile.bullets[id] = {
+      id: id,
+      text: answer,
+      tags: [],
+      roles: job.role ? [job.role] : [],
+      numbers: [],
+      source: { type: 'gap', jobId: job.id, date: new Date().toISOString() },
+      retired: false
+    };
+    RT.stamp(ws.profile);
+    scheduleSave();
+  }
+
+  function showEvidence(r) {
+    if (!r.evidence || !r.evidence.length) {
+      toast(r.name + ': nothing in your profile evidences this yet.');
+      return;
+    }
+    var texts = r.evidence.map(function (id) {
+      var b = ws.profile && ws.profile.bullets[id];
+      return b ? '• ' + b.text : null;
+    }).filter(Boolean);
+    toast(r.name + ' — ' + (texts[0] || 'evidence bullet no longer in the profile'));
   }
 
   function shortDate(iso) {
@@ -737,6 +1160,8 @@
     renderReadout();
     renderProfileStrip();
     renderInventory();
+    renderBulletInspector();
+    renderParseReview();
     renderJobs(); // ends with renderCounts
     renderFolder();
   }
@@ -957,6 +1382,7 @@
     });
     $('new-job').addEventListener('click', newJobDraft);
     $('delete-job').addEventListener('click', deleteJob);
+    $('analyse-job').addEventListener('click', function () { analyseAd(this); });
 
     $('btn-export').addEventListener('click', exportWorkspace);
     $('btn-import').addEventListener('click', function () { $('import-file').click(); });

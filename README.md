@@ -8,7 +8,13 @@ What makes it different: it never invents facts. It selects, reorders and rephra
 
 ## Status
 
-The app shell is built: the three screens, the settings panel, all three persistence layers, a resume PDF picker, the job ad editor, and a key test that costs nothing to run. The Claude calls come next, so extracting a profile, analysing an ad, tailoring and the cover letter do not work yet.
+Two things work end to end. **Import your resume** as a PDF and it becomes a structured inventory: every bullet copied word for word, tagged, with the real numbers recorded and anything uncertain raised for you to confirm. **Paste a job ad** and you get a weighted requirements table, the role the ad actually resembles regardless of its title, what your profile already evidences, and up to five gap questions whose answers become new bullets you keep.
+
+Tailoring, the block editor, PDF export and the cover letter are still to come.
+
+Runs about 11 cents to import a resume and 17 cents to analyse an ad, on Claude Opus 5.
+
+**A note on the dev server.** `python -m http.server` serves the whole folder, so a `.env` sitting next to `index.html` is readable at `http://localhost:8080/.env`. Other websites cannot read it, but keep secrets out of the served folder if that bothers you. The app itself never needs `.env`; only the dev harness does.
 
 **Testing your API key is free.** The Test key button on the Profile screen calls the models endpoint, which authenticates without generating anything. No tokens, no charge, and it does not touch your message rate limit. It also greys out any model your key cannot reach.
 
