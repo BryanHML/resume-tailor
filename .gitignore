@@ -1,0 +1,14 @@
+# personal data: never commit
+*.pdf
+workspace/
+fixtures/
+.env
+*.key
+
+# generated design canvas (2 MiB editor payload); rebuild from design/*.dc.html
+design/resume-tailor.html
+
+# tooling
+node_modules/
+.DS_Store
+Thumbs.db

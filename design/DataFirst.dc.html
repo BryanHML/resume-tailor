@@ -1,0 +1,245 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+  <style>
+    body { margin: 0; background: #eef1f5; }
+    a { color: #4a5bd0; } a:hover { color: #3745a8; }
+    * { box-sizing: border-box; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 900px; background: #eef1f5; color: #0f1419; font-family: 'IBM Plex Sans', 'Segoe UI', Helvetica, sans-serif; font-size: 13px; line-height: 1.4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- Dark chrome -->
+  <div style="height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 28px; padding: 0 24px; background: #14171c; color: #e6e9ee;">
+    <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px;">
+      <span style="width: 22px; height: 22px; border-radius: 4px; background: #4a5bd0; display: inline-flex; align-items: center; justify-content: center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h13"></path></svg>
+      </span>
+      <span>Resume Tailor</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 2px; background: #1f2329; border-radius: 6px; padding: 3px;">
+      <div style="padding: 6px 12px; border-radius: 4px; color: #9aa3ae; font-weight: 500;">Profile</div>
+      <div style="padding: 6px 12px; border-radius: 4px; background: #2c323a; color: #ffffff; font-weight: 600;">Jobs</div>
+      <div style="padding: 6px 12px; border-radius: 4px; color: #9aa3ae; font-weight: 500;">Cover letters</div>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #9aa3ae; display: flex; align-items: center; gap: 18px;">
+      <span>model=opus-5 effort=high</span>
+      <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #2fa56b;"></span>saved 14:32</span>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <div style="flex-shrink: 0; display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); gap: 0; background: #ffffff; border-bottom: 1px solid #d7dde5;">
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 14px 24px; border-right: 1px solid #d7dde5;">
+      <div style="font-size: 18px; font-weight: 600; letter-spacing: -0.01em;">Junior Data Analyst <span style="color: #5b6572; font-weight: 400;">· Yarra Energy · Melbourne</span></div>
+      <div style="display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">
+        <span style="padding: 2px 6px; background: #e9ecf9; color: #3745a8; border-radius: 3px;">role=data-analyst</span>
+        <span style="padding: 2px 6px; background: #eef1f5; border-radius: 3px;">stage=junior</span>
+        <span style="padding: 2px 6px; background: #eef1f5; border-radius: 3px;">pages=1 A4</span>
+        <span>pasted 14/09/2026 14:20</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 12px 20px; border-right: 1px solid #d7dde5;">
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6572;">Keyword coverage</div>
+      <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 24px; font-weight: 500;">68%</span><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">target 75–80</span></div>
+      <div style="height: 4px; background: #e4e8ee; overflow: hidden;"><div style="width: 68%; height: 100%; background: #d9922a;"></div></div>
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 12px 20px; border-right: 1px solid #d7dde5;">
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6572;">Parse safety</div>
+      <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 24px; font-weight: 500;">12/12</span><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">pass</span></div>
+      <div style="height: 4px; background: #e4e8ee; overflow: hidden;"><div style="width: 100%; height: 100%; background: #2fa56b;"></div></div>
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 12px 20px; border-right: 1px solid #d7dde5;">
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6572;">Content flags</div>
+      <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 24px; font-weight: 500;">3</span><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">1 metric · 1 spell · 1 ai</span></div>
+      <div style="height: 4px; background: #e4e8ee; overflow: hidden;"><div style="width: 40%; height: 100%; background: #d9922a;"></div></div>
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 12px 20px;">
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6572;">Page fit</div>
+      <div style="display: flex; align-items: baseline; gap: 8px;"><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 24px; font-weight: 500;">94%</span><span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">of page 1</span></div>
+      <div style="height: 4px; background: #e4e8ee; overflow: hidden;"><div style="width: 94%; height: 100%; background: #4a5bd0;"></div></div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div style="flex-grow: 1; min-height: 0; display: grid; grid-template-columns: 400px minmax(0, 1fr) 380px; gap: 0;">
+
+    <!-- Left: requirements table -->
+    <div style="background: #ffffff; border-right: 1px solid #d7dde5; display: flex; flex-direction: column; overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 10px 20px;">
+        <div style="font-weight: 600; font-size: 14px;">Requirements</div>
+        <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">7 rows · sorted by weight</div>
+      </div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; gap: 0; padding: 0 20px 6px 20px; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: #5b6572;">
+        <div>requirement</div><div style="text-align: right;">wt</div><div style="text-align: right;">ad</div><div style="text-align: right;">cv</div><div style="text-align: right;">status</div>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; align-items: center; min-height: 40px; padding: 0 20px; border-top: 1px solid #edf0f4; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px;">
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">SQL</div><div style="text-align: right;">10</div><div style="text-align: right;">4</div><div style="text-align: right;">3</div><div style="text-align: right;"><span style="padding: 2px 6px; background: #e3f5ea; color: #1f7a4c; border-radius: 3px; font-size: 11px;">evidenced</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; align-items: center; min-height: 40px; padding: 0 20px; border-top: 1px solid #edf0f4; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px;">
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">Power BI</div><div style="text-align: right;">9</div><div style="text-align: right;">3</div><div style="text-align: right;">2</div><div style="text-align: right;"><span style="padding: 2px 6px; background: #e3f5ea; color: #1f7a4c; border-radius: 3px; font-size: 11px;">evidenced</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; align-items: center; min-height: 40px; padding: 0 20px; border-top: 1px solid #edf0f4; background: #eef0fb; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px;">
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">Python (pandas)</div><div style="text-align: right;">8</div><div style="text-align: right;">2</div><div style="text-align: right;">1</div><div style="text-align: right;"><span style="padding: 2px 6px; background: #fbefd8; color: #8a5a10; border-radius: 3px; font-size: 11px;">partial</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; align-items: center; min-height: 40px; padding: 0 20px; border-top: 1px solid #edf0f4; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px;">
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">Stakeholder communication</div><div style="text-align: right;">7</div><div style="text-align: right;">2</div><div style="text-align: right;">2</div><div style="text-align: right;"><span style="padding: 2px 6px; background: #e3f5ea; color: #1f7a4c; border-radius: 3px; font-size: 11px;">evidenced</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; align-items: center; min-height: 40px; padding: 0 20px; border-top: 1px solid #edf0f4; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px;">
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">Snowflake</div><div style="text-align: right;">6</div><div style="text-align: right;">1</div><div style="text-align: right;">0</div><div style="text-align: right;"><span style="padding: 2px 6px; background: #fbe3e0; color: #a0301f; border-radius: 3px; font-size: 11px;">missing</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; align-items: center; min-height: 40px; padding: 0 20px; border-top: 1px solid #edf0f4; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px;">
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">A/B testing</div><div style="text-align: right;">5</div><div style="text-align: right;">1</div><div style="text-align: right;">0</div><div style="text-align: right;"><span style="padding: 2px 6px; background: #fbe3e0; color: #a0301f; border-radius: 3px; font-size: 11px;">missing</span></div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 40px 36px 36px 84px; align-items: center; min-height: 40px; padding: 0 20px; border-top: 1px solid #edf0f4; border-bottom: 1px solid #edf0f4; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px;">
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">Data quality checks</div><div style="text-align: right;">5</div><div style="text-align: right;">2</div><div style="text-align: right;">1</div><div style="text-align: right;"><span style="padding: 2px 6px; background: #fbefd8; color: #8a5a10; border-radius: 3px; font-size: 11px;">partial</span></div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 8px 20px;">
+        <div style="font-weight: 600; font-size: 14px;">Gap questions</div>
+        <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">2 open</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 20px;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #d7dde5; border-radius: 4px;">
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #a0301f;">Q1</span>
+          <div style="flex-grow: 1; line-height: 1.4;">The ad asks for Snowflake. Have you used it, even in a subject or project?</div>
+          <div style="display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 14px; border-radius: 4px; background: #4a5bd0; color: #fff; font-weight: 600; white-space: nowrap;">Answer</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #d7dde5; border-radius: 4px;">
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #a0301f;">Q2</span>
+          <div style="flex-grow: 1; line-height: 1.4;">A/B testing appears once. Any experiment analysis in coursework or work?</div>
+          <div style="display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 14px; border-radius: 4px; background: #4a5bd0; color: #fff; font-weight: 600; white-space: nowrap;">Answer</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Centre: document -->
+    <div style="padding: 20px 24px 0 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; overflow: hidden;">
+      <div style="width: 540px; display: flex; align-items: center; justify-content: space-between; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">
+        <span>tailored v3 · 6 changes pending · 2 accepted</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border: 1px solid #c9d1db; border-radius: 4px; background: #ffffff; color: #0f1419; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600;">Re-tailor</div>
+          <div style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px; border-radius: 4px; background: #0f1419; color: #ffffff; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600;">Export PDF</div>
+        </div>
+      </div>
+
+      <div style="width: 540px; flex-grow: 1; min-height: 0; background: #ffffff; border: 1px solid #d7dde5; padding: 30px 36px; display: flex; flex-direction: column; gap: 12px; font-size: 11.5px; line-height: 1.4; overflow: hidden; position: relative;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-size: 18px; font-weight: 600; letter-spacing: -0.01em;">Sam Taylor</div>
+          <div style="color: #5b6572;">Melbourne VIC · [phone] · [email] · linkedin.com/in/[handle]</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <div style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #0f1419; padding-bottom: 2px;">Summary</div>
+          <div style="display: flex; gap: 8px; align-items: flex-start;">
+            <div style="flex-grow: 1;">Data analyst graduate with SQL and Power BI experience, who <span style="background: #fbe3e0; border-bottom: 1px solid #a0301f;">leveraged</span> a churn analysis on 40,000 customer records to inform a retention pilot.</div>
+            <span style="flex-shrink: 0; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10px; color: #a0301f; background: #fbe3e0; padding: 1px 5px; border-radius: 2px;">ai-tell</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <div style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #0f1419; padding-bottom: 2px;">Key skills</div>
+          <div><span style="background: #e9ecf9;">SQL</span> · <span style="background: #e9ecf9;">Power BI</span> · <span style="background: #e9ecf9;">Python (pandas)</span> · Excel · <span style="background: #e9ecf9;">Data quality checks</span> · Stakeholder reporting</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <div style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #0f1419; padding-bottom: 2px;">Projects</div>
+          <div style="display: flex; justify-content: space-between;"><div style="font-weight: 600;">Customer churn analysis · [University] capstone</div><div style="color: #5b6572;">2025</div></div>
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; gap: 8px; align-items: flex-start; padding: 4px 8px; margin: 0 -8px;">
+              <span>•</span><div style="flex-grow: 1;">Built a Power BI dashboard for weekly reporting.</div>
+              <span style="flex-shrink: 0; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10px; color: #8a5a10; background: #fbefd8; padding: 1px 5px; border-radius: 2px;">no-metric</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: flex-start; padding: 4px 8px; margin: 0 -8px; outline: 2px solid #4a5bd0; background: #eef0fb; position: relative;">
+              <span>•</span><div style="flex-grow: 1;">Analysed <span style="background: #dfe3f7;">40,000 customer records</span> in <span style="background: #dfe3f7;">SQL</span> and <span style="background: #dfe3f7;">Python (pandas)</span> to identify the three churn drivers behind a 12% annual loss, informing a retention pilot.</div>
+              <span style="flex-shrink: 0; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10px; color: #ffffff; background: #4a5bd0; padding: 1px 5px; border-radius: 2px;">P1.b2</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: flex-start; padding: 4px 8px; margin: 0 -8px;">
+              <span>•</span><div style="flex-grow: 1;"><span style="background: #fbefd8; border-bottom: 1px solid #8a5a10;">Optimized</span> the SQL extraction step, cutting refresh time from 40 to 6 minutes.</div>
+              <span style="flex-shrink: 0; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10px; color: #8a5a10; background: #fbefd8; padding: 1px 5px; border-radius: 2px;">en-AU</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <div style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #0f1419; padding-bottom: 2px;">Education</div>
+          <div style="display: flex; justify-content: space-between;"><div><span style="font-weight: 600;">Bachelor of Data Science</span> · [University] · Distinction average</div><div style="color: #5b6572;">2025</div></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <div style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #0f1419; padding-bottom: 2px;">Experience</div>
+          <div style="display: flex; justify-content: space-between;"><div><span style="font-weight: 600;">Retail Assistant</span> · [Employer]</div><div style="color: #5b6572;">03/2022 – 11/2024</div></div>
+          <div style="display: flex; gap: 8px;"><span>•</span><div>Reported weekly stock discrepancies to the store manager, cutting recount time by two hours a week.</div></div>
+        </div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 24px; display: flex; align-items: center; gap: 10px; padding: 0 36px;">
+          <div style="flex-grow: 1; border-top: 1px dashed #4a5bd0;"></div>
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10.5px; color: #4a5bd0; white-space: nowrap;">page 1 · 94% used</div>
+          <div style="flex-grow: 1; border-top: 1px dashed #4a5bd0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: diff inspector -->
+    <div style="background: #ffffff; border-left: 1px solid #d7dde5; display: flex; flex-direction: column; overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 10px 20px; border-bottom: 1px solid #edf0f4;">
+        <div style="font-weight: 600; font-size: 14px;">Change P1.b2</div>
+        <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">3 of 6</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 0; padding: 14px 20px; border-bottom: 1px solid #edf0f4;">
+        <div style="display: flex; gap: 10px; padding: 8px 10px; background: #fbe3e0; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; line-height: 1.5;">
+          <span style="color: #a0301f; flex-shrink: 0;">−</span>
+          <div style="color: #6b2a20;">Analysed churn data using Python and SQL to find drivers of customer loss.</div>
+        </div>
+        <div style="display: flex; gap: 10px; padding: 8px 10px; background: #e3f5ea; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; line-height: 1.5;">
+          <span style="color: #1f7a4c; flex-shrink: 0;">+</span>
+          <div style="color: #15402c;">Analysed 40,000 customer records in SQL and Python (pandas) to identify the three churn drivers behind a 12% annual loss, informing a retention pilot.</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #edf0f4;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: #5b6572;">why</div>
+          <div style="line-height: 1.45;">Adds the record count and outcome already in your profile, and names SQL and Python the way the ad does.</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: #5b6572;">sources</div>
+          <div style="display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 4px 12px; font-size: 12.5px;">
+            <div style="font-family: 'IBM Plex Mono', Consolas, monospace; color: #5b6572;">profile</div><div>Projects · Churn analysis · bullet 2</div>
+            <div style="font-family: 'IBM Plex Mono', Consolas, monospace; color: #5b6572;">gap answer</div><div>Q3 · 14/09/2026 · “12% annual loss”</div>
+            <div style="font-family: 'IBM Plex Mono', Consolas, monospace; color: #5b6572;">numbers</div><div style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2fa56b;"></span>40,000 · 12% both found in profile</div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px 20px;">
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 4px; background: #1f7a4c; color: #fff; font-weight: 600;">Accept <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; opacity: 0.8;">A</span></div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 4px; border: 1px solid #c9d1db; font-weight: 600;">Reject <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #5b6572;">R</span></div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 4px; border: 1px solid #c9d1db; font-weight: 600;">Edit <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #5b6572;">E</span></div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">
+          <span>← prev change</span>
+          <span>next change →</span>
+        </div>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 14px 20px; border-top: 1px solid #edf0f4;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="font-weight: 600; font-size: 13px;">Lint</div>
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px; color: #5b6572;">3 flags · 0 errors</div>
+        </div>
+        <div style="display: flex; flex-direction: column; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11.5px;">
+          <div style="display: flex; gap: 10px; min-height: 30px; align-items: center;"><span style="color: #a0301f;">ai-tell</span><span style="flex-grow: 1; color: #0f1419;">summary: “leveraged”</span></div>
+          <div style="display: flex; gap: 10px; min-height: 30px; align-items: center;"><span style="color: #8a5a10;">no-metric</span><span style="flex-grow: 1; color: #0f1419;">P1.b1</span></div>
+          <div style="display: flex; gap: 10px; min-height: 30px; align-items: center;"><span style="color: #8a5a10;">en-AU</span><span style="flex-grow: 1; color: #0f1419;">P1.b3: optimized → optimised</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

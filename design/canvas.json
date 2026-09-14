@@ -1,0 +1,23 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Screens" },
+    { "id": "page-2", "name": "Directions" }
+  ],
+  "artboards": [
+    { "file": "Profile.dc.html", "title": "1 · Profile & setup", "x": 0, "y": 0, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "Job.dc.html", "title": "2 · Job workspace", "x": 1560, "y": 0, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "Main.dc.html", "title": "3 · Tailor", "x": 0, "y": 1040, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "CoverLetter.dc.html", "title": "4 · Cover letter", "x": 1560, "y": 1040, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "DirectionA.dc.html", "title": "A · Editorial Workbench", "x": 0, "y": 0, "w": 1440, "h": 900, "page": "page-2" },
+    { "file": "DataFirst.dc.html", "title": "B · Data-first Console", "x": 1560, "y": 0, "w": 1440, "h": 900, "page": "page-2" },
+    { "file": "Focus.dc.html", "title": "C · Quiet Focus", "x": 3120, "y": 0, "w": 1440, "h": 900, "page": "page-2" }
+  ],
+  "annotations": [
+    { "id": "system", "x": 0, "y": -200, "w": 620, "page": "page-1", "text": "Chosen system: B's structure with A's palette.\nWarm paper neutrals (#f4efe7 workspace, #fbf8f3 panels), ink #201b16, terracotta accent #b4552c, green / amber / red only for status. IBM Plex Sans for UI, IBM Plex Mono for numbers, ids and labels.\nEvery screen shares the same skeleton: light chrome with segmented nav, a metrics strip, then three panels: context on the left, the document in the centre, the inspector on the right." },
+    { "id": "flow", "x": 700, "y": -200, "w": 520, "page": "page-1", "text": "Flow, left to right, top to bottom:\n1 Profile & setup: key, model, career stage, page target, the bullet inventory with tags, parse review.\n2 Job workspace: paste the ad, detected role, requirements table, gap questions with honest answers.\n3 Tailor: the block editor with diff inspector, sources, lint, page fit.\n4 Cover letter: its own screen and record, starting from a saved job or a pasted ad." },
+    { "id": "dir-a", "x": 0, "y": -210, "w": 520, "page": "page-2", "text": "A · Editorial Workbench\nWarm paper neutrals, serif headings, the resume centre-stage like a page on a desk.\nPalette chosen for the final system." },
+    { "id": "dir-b", "x": 1560, "y": -210, "w": 520, "page": "page-2", "text": "B · Data-first Console\nKPI strip, requirements table, diff inspector with keyboard hints.\nStructure chosen for the final system." },
+    { "id": "dir-c", "x": 3120, "y": -210, "w": 520, "page": "page-2", "text": "C · Quiet Focus\nNear-monochrome, icon rail, requirement chips, floating inspector card.\nNot chosen; kept for reference." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
