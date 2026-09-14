@@ -84,6 +84,38 @@
     return record;
   }
 
+  /* Ids only have to be unique within one person's workspace and stable enough
+     to name a file, so time plus a little randomness is plenty. */
+  function newId(prefix) {
+    return prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  function newJob() {
+    var now = new Date().toISOString();
+    return {
+      id: newId('job'),
+      title: '',
+      company: '',
+      location: '',
+      adText: '',
+      pastedAt: null,
+      role: null,
+      shape: null,
+      analysis: null,
+      gaps: [],
+      tailored: null,
+      coverageAfter: null,
+      status: 'new',
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
+  function wordCount(text) {
+    var trimmed = String(text || '').trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  }
+
   /* ISO 8601 strings compare correctly with >, so no date parsing is needed.
      A record with no timestamp always loses to one that has a timestamp. */
   function newerOf(a, b) {
@@ -138,6 +170,9 @@
     defaultWorkspace: defaultWorkspace,
     migrate: migrate,
     stamp: stamp,
+    newId: newId,
+    newJob: newJob,
+    wordCount: wordCount,
     newerOf: newerOf,
     mergeRecords: mergeRecords,
     mergeWorkspace: mergeWorkspace,

@@ -8,7 +8,9 @@ What makes it different: it never invents facts. It selects, reorders and rephra
 
 ## Status
 
-The app shell is built. The three screens, the settings panel and all three persistence layers work. Nothing calls the Claude API yet: importing a resume, analysing an ad, tailoring and the cover letter are the next steps.
+The app shell is built: the three screens, the settings panel, all three persistence layers, a resume PDF picker, the job ad editor, and a key test that costs nothing to run. The Claude calls come next, so extracting a profile, analysing an ad, tailoring and the cover letter do not work yet.
+
+**Testing your API key is free.** The Test key button on the Profile screen calls the models endpoint, which authenticates without generating anything. No tokens, no charge, and it does not touch your message rate limit. It also greys out any model your key cannot reach.
 
 - `HANDOVER.md` is the build specification and the milestone list.
 - `RESEARCH.md` is the research behind it: how applicant tracking systems actually behave in 2026, what recruiters look for, how the commercial tools work and where they fail, Australian resume conventions, and role-specific notes.

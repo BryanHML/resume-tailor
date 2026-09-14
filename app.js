@@ -368,6 +368,351 @@
     note.textContent = messages.join(' ');
   }
 
+  /* -------------------------------------------------------------- key test
+     GET /v1/models authenticates without generating anything: no input or
+     output tokens, and it is not the messages endpoint, so a test costs
+     nothing and cannot eat a messages rate limit. */
+
+  var ANTHROPIC_VERSION = '2023-06-01';
+
+  function testKey() {
+    if (!apiKey) {
+      setKeyStatus('bad', 'Paste a key first.');
+      return;
+    }
+    setKeyStatus('busy', 'checking...');
+    fetch('https://api.anthropic.com/v1/models?limit=100', {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': ANTHROPIC_VERSION,
+        'anthropic-dangerous-direct-browser-access': 'true'
+      }
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        return { status: res.status, body: body };
+      });
+    }).then(function (r) {
+      if (r.status === 200) {
+        var ids = (r.body.data || []).map(function (m) { return m.id; });
+        var have = RT.MODELS.filter(function (m) { return ids.indexOf(m) !== -1; });
+        setKeyStatus('ok', 'works · ' + ids.length + ' models, '
+          + (have.length ? have.length + ' of the 3 here' : 'none of the 3 here'));
+        restrictModelChoices(ids);
+        return;
+      }
+      if (r.status === 401) { setKeyStatus('bad', 'key rejected'); return; }
+      if (r.status === 403) { setKeyStatus('bad', 'key has no access to this'); return; }
+      if (r.status === 429) { setKeyStatus('bad', 'rate limited, try again shortly'); return; }
+      var msg = r.body && r.body.error && r.body.error.message ? r.body.error.message : ('HTTP ' + r.status);
+      setKeyStatus('bad', msg);
+    }).catch(function () {
+      // A thrown fetch is the browser blocking it or no network, never a bad key.
+      setKeyStatus('bad', 'could not reach the API (offline, or blocked by the browser)');
+    });
+  }
+
+  function setKeyStatus(kind, text) {
+    var el = $('key-status');
+    el.className = 'keystatus ' + kind;
+    el.textContent = '';
+    if (kind === 'ok' || kind === 'bad') el.appendChild(makeDot(kind === 'ok' ? 'ok' : 'bad'));
+    el.appendChild(document.createTextNode(text));
+  }
+
+  /* If the key cannot see a model, saying so on the picker beats a failed call later. */
+  function restrictModelChoices(ids) {
+    var select = $('set-model');
+    for (var i = 0; i < select.options.length; i++) {
+      var opt = select.options[i];
+      var ok = ids.indexOf(opt.value) !== -1;
+      opt.disabled = !ok;
+      opt.textContent = opt.textContent.replace(/ · not on this key$/, '');
+      if (!ok) opt.textContent += ' · not on this key';
+    }
+  }
+
+  /* ------------------------------------------------------------ resume file
+     The PDF is held in memory only. It is needed for one API call, and a
+     base64 resume would eat most of the 5 MB local storage budget.
+     ponytail: re-pick the file after a reload; store it in IndexedDB if that
+     ever becomes annoying. */
+
+  var stagedResume = null; // { name, size, base64 }
+
+  function chooseResume(file) {
+    if (!file) return;
+    var MAX = 10 * 1024 * 1024;
+    if (file.size > MAX) {
+      toast('That file is ' + formatSize(file.size) + '. Resumes are normally well under 1 MB, so this is probably not one.', true);
+      return;
+    }
+    // Trust the bytes, not the extension.
+    file.slice(0, 5).arrayBuffer().then(function (buf) {
+      var b = new Uint8Array(buf);
+      var isPdf = b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46; // %PDF
+      if (!isPdf) {
+        toast('That is not a PDF. Export your resume as a PDF and try again.', true);
+        return;
+      }
+      return readAsBase64(file).then(function (base64) {
+        stagedResume = { name: file.name, size: file.size, base64: base64 };
+        renderInventory();
+        toast('Loaded ' + file.name + '. It stays on this machine until you extract it.');
+      });
+    }).catch(function (err) {
+      toast('Could not read that file: ' + err.message, true);
+    });
+  }
+
+  function readAsBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        // A data URL's payload is unbroken base64, which is what the API wants.
+        var s = String(reader.result);
+        resolve(s.slice(s.indexOf(',') + 1));
+      };
+      reader.onerror = function () { reject(reader.error || new Error('unreadable')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  function renderInventory() {
+    var host = $('inventory');
+    host.textContent = '';
+
+    if (!stagedResume && !ws.profile) {
+      host.className = 'doc empty';
+      host.appendChild(buildEmpty('No profile yet',
+        ['Add your resume as a PDF to start. Every bullet is pulled out word for word, tagged, and stored with the real numbers behind it.',
+         'Nothing here is generated. The inventory only ever holds what you wrote or told it.']));
+      return;
+    }
+
+    host.className = 'doc doc-pad';
+
+    if (stagedResume) {
+      var card = document.createElement('div');
+      card.className = 'filecard';
+
+      var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('width', '20'); icon.setAttribute('height', '20');
+      icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('fill', 'none');
+      icon.setAttribute('stroke', '#8f4222'); icon.setAttribute('stroke-width', '2');
+      icon.setAttribute('stroke-linecap', 'round'); icon.setAttribute('stroke-linejoin', 'round');
+      var p1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p1.setAttribute('d', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z');
+      var p2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p2.setAttribute('d', 'M14 2v6h6');
+      icon.appendChild(p1); icon.appendChild(p2);
+      card.appendChild(icon);
+
+      var grow = document.createElement('div');
+      grow.className = 'grow';
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = stagedResume.name;
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = formatSize(stagedResume.size) + ' · ready to extract';
+      grow.appendChild(name);
+      grow.appendChild(meta);
+      card.appendChild(grow);
+
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'link-btn';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', function () {
+        stagedResume = null;
+        renderInventory();
+      });
+      card.appendChild(remove);
+      host.appendChild(card);
+
+      var extract = document.createElement('button');
+      extract.type = 'button';
+      extract.className = 'btn btn-accent';
+      extract.textContent = 'Extract profile';
+      extract.disabled = true;
+      host.appendChild(extract);
+
+      var note = document.createElement('p');
+      note.className = 'note';
+      note.textContent = apiKey
+        ? 'Extraction is the next step in the build. Your file is loaded and waiting.'
+        : 'Add your API key on the left, then extraction runs here. Extraction is the next step in the build.';
+      host.appendChild(note);
+    }
+  }
+
+  function buildEmpty(heading, paragraphs) {
+    var inner = document.createElement('div');
+    inner.className = 'empty-inner';
+    var h = document.createElement('h3');
+    h.textContent = heading;
+    inner.appendChild(h);
+    paragraphs.forEach(function (text, i) {
+      var p = document.createElement('p');
+      if (i === paragraphs.length - 1 && paragraphs.length > 1) p.className = 'muted';
+      p.textContent = text;
+      inner.appendChild(p);
+    });
+    return inner;
+  }
+
+  /* ------------------------------------------------------------------ jobs */
+
+  var openJobId = null;
+
+  function openJob(id) {
+    openJobId = id;
+    ws.settings.lastOpenJobId = id;
+    touchSettings();
+    var job = findJob(id);
+    $('job-title').value = job ? job.title : '';
+    $('job-company').value = job ? job.company : '';
+    $('job-ad').value = job ? job.adText : '';
+    renderJobs();
+  }
+
+  function findJob(id) {
+    for (var i = 0; i < ws.jobs.length; i++) if (ws.jobs[i].id === id) return ws.jobs[i];
+    return null;
+  }
+
+  function newJobDraft() {
+    openJobId = null;
+    ws.settings.lastOpenJobId = null;
+    touchSettings();
+    $('job-title').value = '';
+    $('job-company').value = '';
+    $('job-ad').value = '';
+    renderJobs();
+    $('job-title').focus();
+  }
+
+  /* Create the record the moment there is anything worth keeping, so a pasted
+     ad is never lost to a stray reload. */
+  function captureJobForm() {
+    var title = $('job-title').value;
+    var company = $('job-company').value;
+    var adText = $('job-ad').value;
+    var hasContent = title.trim() || company.trim() || adText.trim();
+
+    var job = openJobId ? findJob(openJobId) : null;
+    if (!job) {
+      if (!hasContent) { renderJobs(); return; }
+      job = RT.newJob();
+      ws.jobs.unshift(job);
+      openJobId = job.id;
+      ws.settings.lastOpenJobId = job.id;
+      ws.settingsUpdatedAt = new Date().toISOString();
+    }
+
+    job.title = title;
+    job.company = company;
+    if (job.adText !== adText) {
+      job.adText = adText;
+      job.pastedAt = adText.trim() ? new Date().toISOString() : null;
+    }
+    RT.stamp(job);
+    scheduleSave();
+    renderJobs();
+  }
+
+  function deleteJob() {
+    var job = openJobId ? findJob(openJobId) : null;
+    if (!job) return;
+    var label = job.title || job.company || 'this job';
+    if (!window.confirm('Delete ' + label + '? This cannot be undone.')) return;
+    ws.jobs = ws.jobs.filter(function (j) { return j.id !== job.id; });
+    // The folder keeps its own copy, so remove that too or it comes back on reconnect.
+    removeRecordFile('jobs', job.id);
+    newJobDraft();
+    flushSave();
+    toast('Deleted ' + label + '.');
+  }
+
+  function removeRecordFile(folderName, id) {
+    if (!dirHandle || dirStatus !== 'connected') return;
+    dirHandle.getDirectoryHandle(folderName).then(function (dir) {
+      return dir.removeEntry(id + '.json');
+    }).catch(quiet);
+  }
+
+  function renderJobs() {
+    var list = $('job-list');
+    list.textContent = '';
+
+    RT.byNewest(ws.jobs).forEach(function (job) {
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'jobrow';
+      if (job.id === openJobId) row.setAttribute('aria-current', 'true');
+
+      var top = document.createElement('div');
+      top.className = 'top';
+      var name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = job.title || 'Untitled job';
+      var tag = document.createElement('span');
+      tag.className = 'tag ' + job.status;
+      tag.textContent = job.status;
+      top.appendChild(name);
+      top.appendChild(tag);
+      row.appendChild(top);
+
+      if (job.company) {
+        var where = document.createElement('span');
+        where.className = 'where';
+        where.textContent = job.company;
+        row.appendChild(where);
+      }
+
+      var when = document.createElement('span');
+      when.className = 'when';
+      when.textContent = RT.wordCount(job.adText) + ' words · ' + shortDate(job.updatedAt);
+      row.appendChild(when);
+
+      row.addEventListener('click', function () { openJob(job.id); });
+      list.appendChild(row);
+    });
+
+    if (!ws.jobs.length) {
+      var empty = document.createElement('p');
+      empty.className = 'empty-note';
+      empty.style.padding = '0 20px';
+      empty.textContent = 'No jobs yet. Paste an ad to start one.';
+      list.appendChild(empty);
+    }
+
+    var words = RT.wordCount($('job-ad').value);
+    $('job-wordcount').textContent = words + (words === 1 ? ' word' : ' words');
+    $('delete-job').hidden = !openJobId;
+    $('analyse-job').disabled = true;
+
+    var hint = $('job-hint');
+    if (!words) hint.textContent = 'Paste the whole ad. Analysis reads it on your machine and sends it to Claude with your key.';
+    else if (words < 80) hint.textContent = 'That is short for an ad. More text gives a better requirements table.';
+    else if (!apiKey) hint.textContent = 'Add your API key on the Profile screen to analyse this ad.';
+    else hint.textContent = 'Saved. Analysis is the next step in the build.';
+
+    renderCounts();
+  }
+
+  function shortDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
   /* ---------------------------------------------------------------- render */
 
   function applySettings() {
@@ -391,7 +736,8 @@
   function render() {
     renderReadout();
     renderProfileStrip();
-    renderCounts();
+    renderInventory();
+    renderJobs(); // ends with renderCounts
     renderFolder();
   }
 
@@ -523,7 +869,14 @@
       $(s.nav).addEventListener('click', function () { showScreen(s.nav); });
     });
 
-    $('key-input').addEventListener('input', function () { storeKey(this.value); });
+    $('key-input').addEventListener('input', function () {
+      storeKey(this.value);
+      setKeyStatus('', '');
+      renderJobs();
+      renderInventory();
+    });
+
+    $('key-test').addEventListener('click', testKey);
 
     $('key-show').addEventListener('click', function () {
       var input = $('key-input');
@@ -593,6 +946,18 @@
     });
     $('folder-forget').addEventListener('click', forgetFolder);
 
+    $('add-resume').addEventListener('click', function () { $('resume-file').click(); });
+    $('resume-file').addEventListener('change', function () {
+      if (this.files && this.files[0]) chooseResume(this.files[0]);
+      this.value = ''; // so picking the same file again still fires change
+    });
+
+    ['job-title', 'job-company', 'job-ad'].forEach(function (id) {
+      $(id).addEventListener('input', captureJobForm);
+    });
+    $('new-job').addEventListener('click', newJobDraft);
+    $('delete-job').addEventListener('click', deleteJob);
+
     $('btn-export').addEventListener('click', exportWorkspace);
     $('btn-import').addEventListener('click', function () { $('import-file').click(); });
     $('import-file').addEventListener('change', function () {
@@ -624,6 +989,17 @@
     wire();
     applySettings();
     loadKey();
+
+    // Come back to whatever was open last.
+    var last = ws.settings.lastOpenJobId;
+    if (last && findJob(last)) {
+      openJobId = last;
+      var job = findJob(last);
+      $('job-title').value = job.title;
+      $('job-company').value = job.company;
+      $('job-ad').value = job.adText;
+    }
+
     render();
     if (stored) markSaved(true);
 

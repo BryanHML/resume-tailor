@@ -376,7 +376,9 @@ Block editor behaviour (Tailor, Profile and Cover letter share it)
 6. **Cover letter.** Own screen, generation from a saved job and from a pasted ad, paragraph blocks, checks, export. Done when a letter passes all six checks on a real ad.
 7. **Role profiles.** The five JSON files tuned against the real ads. Done when the analysis call's requirement lists match what a human reads in the ads.
 
-Verify in build 1, do not assume: browser-direct API calls from localhost and from file://, structured output shapes, print-to-PDF text order, in-browser folder reconnect, cost per run from response usage.
+Verify in build 1, do not assume: ~~browser-direct API calls from localhost~~ (**verified**: `GET /v1/models` from `http://localhost:8080` with `anthropic-dangerous-direct-browser-access: true` returns a clean 401 on a bad key, so CORS and auth both work), browser-direct calls from file://, structured output shapes, print-to-PDF text order, in-browser folder reconnect, cost per run from response usage.
+
+**Free key test.** `GET /v1/models` authenticates without generating anything: no input or output tokens, no charge, and it is not the messages endpoint so it cannot consume a messages rate limit. The Profile screen uses it for the Test key button, and the returned model list also greys out any model the key cannot reach. Use this, never a one-token message, whenever a key needs checking.
 
 ---
 

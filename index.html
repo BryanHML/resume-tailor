@@ -7,7 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="styles.css">
+<!-- ?v= is a cache buster. python -m http.server sends no cache headers, so Chrome
+     caches these heuristically and can keep serving an old copy after you pull.
+     Bump it when styles.css, core.js or app.js change. -->
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 
@@ -77,6 +80,10 @@
               <input type="checkbox" id="key-remember">
               <span>Remember on this device <span class="muted">(off: forgotten when the tab closes)</span></span>
             </label>
+            <div class="link-row">
+              <button type="button" class="link-btn" id="key-test">Test key</button>
+              <span class="keystatus" id="key-status"></span>
+            </div>
             <p class="note" id="key-note" hidden></p>
           </div>
 
@@ -160,15 +167,14 @@
       <!-- Centre: inventory -->
       <div class="panel-centre">
         <div class="doc-toolbar mono">
-          <span>every bullet you have ever written &middot; tag it once, reuse it everywhere</span>
+          <span>tag a bullet once, reuse it everywhere</span>
+          <button type="button" class="btn btn-accent" id="add-resume">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            Add resume PDF
+          </button>
+          <input type="file" id="resume-file" accept="application/pdf,.pdf" hidden>
         </div>
-        <div class="doc empty" id="inventory">
-          <div class="empty-inner">
-            <h3>No profile yet</h3>
-            <p>Importing your resume as a PDF arrives with the profile bootstrap, the next step in the build. It will extract every bullet verbatim, tag it, and record the real numbers behind it.</p>
-            <p class="muted">Nothing here is generated. The inventory only ever holds what you wrote or told it.</p>
-          </div>
-        </div>
+        <div class="doc" id="inventory"></div>
       </div>
 
       <!-- Right: inspector -->
@@ -213,21 +219,51 @@
     </div>
     <div class="panels panels-job">
       <aside class="panel panel-left">
-        <div class="panel-head"><h2>Jobs</h2><span class="mono muted" id="jobs-count-2">0 saved</span></div>
-        <div class="panel-body"><p class="empty-note">No jobs yet.</p></div>
+        <div class="panel-head">
+          <h2>Jobs</h2>
+          <span class="mono muted" id="jobs-count-2">0 saved</span>
+        </div>
+        <div class="joblist" id="job-list"></div>
+        <div class="panel-body">
+          <button type="button" class="btn btn-ghost btn-block" id="new-job">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            New job
+          </button>
+        </div>
       </aside>
-      <div class="panel-centre">
-        <div class="doc empty">
-          <div class="empty-inner">
-            <h3>Job workspace</h3>
-            <p>Paste a job ad here to get a weighted requirements table, the role the ad actually resembles, and up to five gap questions.</p>
-            <p class="muted">Arrives in the job workspace step of the build.</p>
+
+      <div class="panel-centre panel-centre-form">
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label mono" for="job-title">job title</label>
+            <input type="text" id="job-title" placeholder="Junior Data Analyst" autocomplete="off">
+          </div>
+          <div class="field">
+            <label class="field-label mono" for="job-company">company</label>
+            <input type="text" id="job-company" placeholder="Yarra Energy" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="field field-grow">
+          <div class="field-head">
+            <label class="field-label mono" for="job-ad">job ad &middot; paste the full text</label>
+            <span class="mono muted" id="job-wordcount">0 words</span>
+          </div>
+          <textarea id="job-ad" spellcheck="false" placeholder="Paste the whole ad here, including the responsibilities and the requirements. More text gives a better requirements table."></textarea>
+        </div>
+
+        <div class="form-foot">
+          <p class="note" id="job-hint"></p>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="delete-job" hidden>Delete</button>
+            <button type="button" class="btn btn-accent" id="analyse-job" disabled>Analyse ad</button>
           </div>
         </div>
       </div>
+
       <aside class="panel panel-right">
         <div class="panel-head"><h2>Requirements</h2></div>
-        <div class="panel-body"><p class="empty-note">Analyse an ad to see its requirements, weights and your evidence for each.</p></div>
+        <div class="panel-body"><p class="empty-note">Analyse an ad to see its requirements, their weight, how often each appears, and what in your profile evidences it.</p></div>
       </aside>
     </div>
   </section>
@@ -277,7 +313,7 @@
 
 <div class="toast" id="status" role="status" aria-live="polite" hidden></div>
 
-<script src="core.js"></script>
-<script src="app.js"></script>
+<script src="core.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
