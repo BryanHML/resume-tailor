@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume Tailor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="chrome">
+  <div class="wordmark">
+    <span class="mark" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h13"></path></svg>
+    </span>
+    <span>Resume Tailor</span>
+  </div>
+
+  <div class="seg-nav" role="tablist" aria-label="Screens">
+    <button type="button" role="tab" id="nav-profile" aria-controls="screen-profile" aria-selected="true">Profile</button>
+    <button type="button" role="tab" id="nav-jobs" aria-controls="screen-jobs" aria-selected="false">Jobs</button>
+    <button type="button" role="tab" id="nav-letters" aria-controls="screen-letters" aria-selected="false">Cover letters</button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="readout mono">
+    <span id="readout-model">model=opus-5 effort=high</span>
+    <span class="saved"><span class="dot" id="saved-dot"></span><span id="saved-text">not saved yet</span></span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================ PROFILE ============================ -->
+  <section class="screen" id="screen-profile" role="tabpanel" aria-labelledby="nav-profile">
+    <div class="strip strip-4">
+      <div class="strip-title">
+        <h1>Master profile <span class="muted" id="profile-name">not imported yet</span></h1>
+        <div class="chips mono" id="profile-chips"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Inventory</div>
+        <div class="metric-value"><span class="mono num" id="m-inventory">0</span><span class="mono sub" id="m-inventory-sub">bullets</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Tagged for</div>
+        <div class="metric-value"><span class="mono num" id="m-tagged">&ndash;</span><span class="mono sub">roles covered</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Parse review</div>
+        <div class="metric-value"><span class="mono num" id="m-review">0</span><span class="mono sub">fields to confirm</span></div>
+      </div>
+    </div>
+
+    <div class="panels panels-wide">
+
+      <!-- Left: setup -->
+      <aside class="panel panel-left">
+        <div class="panel-head">
+          <h2>Setup</h2>
+          <span class="mono muted">stored on this device</span>
+        </div>
+
+        <div class="panel-body">
+
+          <div class="field">
+            <label class="field-label mono" for="key-input">anthropic api key</label>
+            <div class="input-row">
+              <input type="password" id="key-input" class="mono" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
+              <button type="button" class="link-btn" id="key-show" aria-pressed="false">show</button>
+            </div>
+            <label class="check">
+              <input type="checkbox" id="key-remember">
+              <span>Remember on this device <span class="muted">(off: forgotten when the tab closes)</span></span>
+            </label>
+            <p class="note" id="key-note" hidden></p>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label class="field-label mono" for="set-model">model</label>
+              <select id="set-model">
+                <option value="claude-opus-5">Claude Opus 5</option>
+                <option value="claude-sonnet-5">Claude Sonnet 5</option>
+                <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+              </select>
+            </div>
+            <div class="field">
+              <span class="field-label mono" id="label-effort">effort</span>
+              <div class="seg" role="radiogroup" aria-labelledby="label-effort">
+                <label><input type="radio" name="effort" value="low"><span>low</span></label>
+                <label><input type="radio" name="effort" value="medium"><span>med</span></label>
+                <label><input type="radio" name="effort" value="high"><span>high</span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field-label mono" id="label-stage">career stage</span>
+            <div class="seg" role="radiogroup" aria-labelledby="label-stage">
+              <label><input type="radio" name="stage" value="student"><span>student</span></label>
+              <label><input type="radio" name="stage" value="graduate"><span>graduate</span></label>
+              <label><input type="radio" name="stage" value="junior"><span>junior</span></label>
+              <label><input type="radio" name="stage" value="mid"><span>mid</span></label>
+              <label><input type="radio" name="stage" value="senior"><span>senior</span></label>
+            </div>
+          </div>
+
+          <div class="rows">
+            <div class="row">
+              <label for="set-pages">Page target</label>
+              <select id="set-pages" class="compact">
+                <option value="1">1 page &middot; A4</option>
+                <option value="2">2 pages &middot; A4</option>
+                <option value="3">3 pages &middot; A4</option>
+              </select>
+            </div>
+            <div class="row">
+              <span>Spelling</span>
+              <span class="mono muted">en-AU &middot; mirrors the ad</span>
+            </div>
+            <label class="row">
+              <span>Work-rights line in header</span>
+              <input type="checkbox" class="switch" id="set-workrights">
+            </label>
+            <div class="row row-input" id="workrights-row" hidden>
+              <label class="sr-only" for="set-workrights-text">Work rights wording</label>
+              <input type="text" id="set-workrights-text" placeholder="Australian citizen">
+            </div>
+            <label class="row">
+              <span>&ldquo;Referees available on request&rdquo;</span>
+              <input type="checkbox" class="switch" id="set-referees">
+            </label>
+          </div>
+
+          <div class="field">
+            <span class="field-label mono">workspace folder</span>
+            <div class="folder">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+              <span class="mono folder-path" id="folder-path">no folder connected</span>
+              <span class="folder-state" id="folder-state"></span>
+            </div>
+            <div class="link-row">
+              <button type="button" class="link-btn" id="folder-connect">Choose folder</button>
+              <button type="button" class="link-btn" id="folder-forget" hidden>Forget</button>
+              <button type="button" class="link-btn" id="btn-export">Export workspace.json</button>
+              <button type="button" class="link-btn" id="btn-import">Import</button>
+              <input type="file" id="import-file" accept="application/json,.json" hidden>
+            </div>
+            <p class="note" id="folder-note"></p>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- Centre: inventory -->
+      <div class="panel-centre">
+        <div class="doc-toolbar mono">
+          <span>every bullet you have ever written &middot; tag it once, reuse it everywhere</span>
+        </div>
+        <div class="doc empty" id="inventory">
+          <div class="empty-inner">
+            <h3>No profile yet</h3>
+            <p>Importing your resume as a PDF arrives with the profile bootstrap, the next step in the build. It will extract every bullet verbatim, tag it, and record the real numbers behind it.</p>
+            <p class="muted">Nothing here is generated. The inventory only ever holds what you wrote or told it.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: inspector -->
+      <aside class="panel panel-right">
+        <div class="panel-head">
+          <h2>Selected bullet</h2>
+        </div>
+        <div class="panel-body">
+          <p class="empty-note">Select a bullet to see its text, the numbers on record behind it and where each one came from.</p>
+        </div>
+        <div class="panel-foot">
+          <div class="panel-head">
+            <h2 class="sm">Parse review</h2>
+            <span class="mono muted" id="review-count">0 to confirm</span>
+          </div>
+          <p class="empty-note">Anything the import could not read with confidence is listed here.</p>
+        </div>
+      </aside>
+
+    </div>
+  </section>
+
+  <!-- ============================= JOBS ============================== -->
+  <section class="screen" id="screen-jobs" role="tabpanel" aria-labelledby="nav-jobs" hidden>
+    <div class="strip strip-4">
+      <div class="strip-title">
+        <h1>Jobs <span class="muted">paste an ad, answer the gaps, then tailor</span></h1>
+        <div class="chips mono"><span class="chip" id="jobs-count">0 saved</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Detected role</div>
+        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">no job open</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Coverage</div>
+        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">target 75&ndash;80</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Gaps</div>
+        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">open questions</span></div>
+      </div>
+    </div>
+    <div class="panels panels-job">
+      <aside class="panel panel-left">
+        <div class="panel-head"><h2>Jobs</h2><span class="mono muted" id="jobs-count-2">0 saved</span></div>
+        <div class="panel-body"><p class="empty-note">No jobs yet.</p></div>
+      </aside>
+      <div class="panel-centre">
+        <div class="doc empty">
+          <div class="empty-inner">
+            <h3>Job workspace</h3>
+            <p>Paste a job ad here to get a weighted requirements table, the role the ad actually resembles, and up to five gap questions.</p>
+            <p class="muted">Arrives in the job workspace step of the build.</p>
+          </div>
+        </div>
+      </div>
+      <aside class="panel panel-right">
+        <div class="panel-head"><h2>Requirements</h2></div>
+        <div class="panel-body"><p class="empty-note">Analyse an ad to see its requirements, weights and your evidence for each.</p></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ========================== COVER LETTERS ======================== -->
+  <section class="screen" id="screen-letters" role="tabpanel" aria-labelledby="nav-letters" hidden>
+    <div class="strip strip-4">
+      <div class="strip-title">
+        <h1>Cover letters <span class="muted">a separate document, from the same profile</span></h1>
+        <div class="chips mono"><span class="chip" id="letters-count">0 saved</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Length</div>
+        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">band 250&ndash;400</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Requirements addressed</div>
+        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">of the ad</span></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Checks</div>
+        <div class="metric-value"><span class="mono num">&ndash;</span><span class="mono sub">6 run on each letter</span></div>
+      </div>
+    </div>
+    <div class="panels panels-letter">
+      <aside class="panel panel-left">
+        <div class="panel-head"><h2>Start from</h2></div>
+        <div class="panel-body"><p class="empty-note">Pick a saved job, or paste a fresh ad.</p></div>
+      </aside>
+      <div class="panel-centre">
+        <div class="doc empty">
+          <div class="empty-inner">
+            <h3>No letter yet</h3>
+            <p>One page, 250 to 400 words, direct and first person, with company facts taken only from the ad and your own notes.</p>
+            <p class="muted">Arrives in the cover letter step of the build.</p>
+          </div>
+        </div>
+      </div>
+      <aside class="panel panel-right">
+        <div class="panel-head"><h2>Selected paragraph</h2></div>
+        <div class="panel-body"><p class="empty-note">Each paragraph shows which requirements it covers and where its claims come from.</p></div>
+      </aside>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="status" role="status" aria-live="polite" hidden></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

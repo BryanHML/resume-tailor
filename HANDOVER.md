@@ -1,6 +1,6 @@
 # Resume Tailor: build handover
 
-Status on 2026-09-14: research and design are complete. No application code exists yet. This document is the specification. Read it fully, then `RESEARCH.md` for the evidence behind each decision, then the design files in `design/`. Do not re-open decisions marked locked unless the owner asks.
+Status on 2026-09-14: research and design are complete. Milestone 1 (the skeleton) is built and verified; see section 12 for what that covers and what is next. This document is the specification. Read it fully, then `RESEARCH.md` for the evidence behind each decision, then the design files in `design/`. Do not re-open decisions marked locked unless the owner asks.
 
 The owner is Bryan. He is building this for his own job search at entry/junior level in Melbourne, Australia, targeting data roles. It should also work for anyone with an Anthropic API key who runs it locally.
 
@@ -368,7 +368,7 @@ Block editor behaviour (Tailor, Profile and Cover letter share it)
 
 ## 12. Build order and definition of done
 
-1. **Skeleton.** `index.html` with the chrome, nav and three empty screens in the tokens above. Settings panel works. Key handling works. Persistence layers work (autosave, folder, export/import). Done when a reload restores state and the folder reconnects with one click.
+1. ~~**Skeleton.**~~ **Done.** `index.html`, `styles.css`, `core.js`, `app.js`, `test.js`. Chrome, nav and three screens in the tokens above; settings panel, key handling and all three persistence layers work. Verified: settings survive a reload, import merges without destroying existing records, the key never enters the workspace, panel widths and 44px control heights match the design. Two spec refinements made while building: `settingsUpdatedAt` at the workspace level and `updatedAt` on the profile, both needed so the folder merge can pick a winner per record. Not verified by automation: the folder picker is an operating-system dialog, so choosing a folder and reconnecting needs one manual pass.
 2. **Profile bootstrap.** PDF or text in, profile out, parse review, inventory rendered as blocks with tags. Done when the owner's real resume imports cleanly and every uncertain field is surfaced.
 3. **Job workspace.** Paste, analyse, role and shape, requirements table, predicted skills, gap questions with answers becoming bullets. Done when the five role fixtures analyse sensibly and coverage-before is computed locally.
 4. **Tailor.** Streamed tailor call, block editor, diff inspector, decisions, lint, numbers check, page fit, trim to fit, re-tailor preserving decisions. Done when an accepted change survives a re-tailor and every change has a source.
