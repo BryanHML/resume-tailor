@@ -781,6 +781,7 @@
         return { id: 'q' + (i + 1), requirement: g.requirement, question: g.question, answer: '', skipped: false, bulletId: null };
       });
       job.status = 'analysed';
+      adEditing = false; // show the marked-up ad, not the textarea
       RT.stamp(job);
       flushSave();
     });
@@ -807,6 +808,7 @@
 
   function openJob(id) {
     openJobId = id;
+    adEditing = false;
     ws.settings.lastOpenJobId = id;
     touchSettings();
     var job = findJob(id);
@@ -823,6 +825,7 @@
 
   function newJobDraft() {
     openJobId = null;
+    adEditing = false;
     ws.settings.lastOpenJobId = null;
     touchSettings();
     $('job-title').value = '';
@@ -945,9 +948,119 @@
     else if (job && job.analysis) hint.textContent = 'Analysed. Re-analysing replaces the requirements and the gap questions.';
     else hint.textContent = 'Ready. One call on ' + ws.settings.model.replace('claude-', '') + '.';
 
+    renderAdPane(job);
     renderJobStrip(job);
     renderRequirements(job);
+    applyLayouts(); // the analysed state has its own default widths
     renderCounts();
+  }
+
+  /* ---------------------------------------------------------- the ad pane
+     Before analysis the textarea is the job. After it, the ad is reference:
+     what you want is to see where each requirement actually appears, so it
+     becomes a read-only view with the matched terms marked. */
+
+  var adEditing = false;
+
+  function renderAdPane(job) {
+    var box = $('job-ad');
+    var view = $('job-ad-view');
+    var toggle = $('ad-toggle');
+    var analysed = !!(job && job.analysis);
+
+    toggle.hidden = !analysed;
+    toggle.textContent = adEditing ? 'Done editing' : 'Edit ad';
+
+    if (!analysed || adEditing) {
+      box.hidden = false;
+      view.hidden = true;
+      $('job-ad-label').textContent = 'job ad · paste the full text';
+      return;
+    }
+
+    box.hidden = true;
+    view.hidden = false;
+    $('job-ad-label').textContent = 'job ad · matched requirements marked';
+    paintAd(view, job.adText, job.analysis.requirements);
+  }
+
+  /* Collect every alias worth looking for. A requirement's own name is only
+     useful when it is short enough to appear literally; "Proficiency in Python
+     for data analysis" never will. */
+  function adTerms(requirements) {
+    var terms = [];
+    (requirements || []).forEach(function (r) {
+      var candidates = (r.aliases || []).slice();
+      if (r.name && r.name.split(/\s+/).length <= 3) candidates.push(r.name);
+      candidates.forEach(function (t) {
+        if (t && t.length > 1) terms.push({ term: t, req: r });
+      });
+    });
+    // Longest first so "Power BI" wins over "BI".
+    terms.sort(function (a, b) { return b.term.length - a.term.length; });
+    return terms;
+  }
+
+  function escapeRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /* Built with createElement and text nodes, never innerHTML: the ad is pasted
+     from a website and must never be able to inject markup here. */
+  function paintAd(host, text, requirements) {
+    host.textContent = '';
+    var terms = adTerms(requirements);
+    if (!terms.length) { host.textContent = text; return; }
+
+    var pattern = terms.map(function (t) { return escapeRe(t.term); }).join('|');
+    var re;
+    try {
+      re = new RegExp('(?<![\\w-])(' + pattern + ')(?![\\w-])', 'gi');
+    } catch (e) {
+      host.textContent = text;
+      return;
+    }
+
+    var lookup = {};
+    terms.forEach(function (t) {
+      var k = t.term.toLowerCase();
+      if (!lookup[k]) lookup[k] = t.req;
+    });
+
+    var last = 0;
+    var match;
+    var counts = {};
+    while ((match = re.exec(text)) !== null) {
+      if (match.index > last) host.appendChild(document.createTextNode(text.slice(last, match.index)));
+      var req = lookup[match[0].toLowerCase()];
+      var mark = document.createElement('mark');
+      mark.textContent = match[0];
+      if (req) {
+        mark.dataset.req = req.id;
+        mark.title = req.name + ' · weight ' + req.weight + ' · ' + req.status;
+        counts[req.id] = (counts[req.id] || 0) + 1;
+        mark.addEventListener('click', function () { focusRequirement(req.id); });
+      }
+      host.appendChild(mark);
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) host.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  /* Clicking a requirement row, or one of its marks in the ad, lights up every
+     occurrence and scrolls the first into view. */
+  function focusRequirement(reqId) {
+    var view = $('job-ad-view');
+    if (view.hidden) return;
+    var marks = view.querySelectorAll('mark');
+    var first = null;
+    for (var i = 0; i < marks.length; i++) {
+      var on = marks[i].dataset.req === reqId;
+      marks[i].classList.toggle('hot', on);
+      if (on && !first) first = marks[i];
+    }
+    if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return !!first;
   }
 
   function renderJobStrip(job) {
@@ -1017,7 +1130,9 @@
       var status = el('div', 'right');
       status.appendChild(el('span', 'tag ' + r.status, r.status));
       row.appendChild(status);
-      row.addEventListener('click', function () { showEvidence(r); });
+      row.addEventListener('click', function () {
+        if (!focusRequirement(r.id)) showEvidence(r);
+      });
       host.appendChild(row);
     });
 
@@ -1271,6 +1386,137 @@
     return s;
   }
 
+  /* --------------------------------------------------------------- layout
+     Each screen's side panels are draggable. The widths that matter change
+     with what you are doing: while you are pasting an ad the textarea is the
+     job, and once it is analysed the requirements are. So the default follows
+     the phase, and any drag becomes a permanent override for that screen. */
+
+  var LAYOUT_MIN = 220;
+  var CENTRE_MIN = 300;
+
+  var LAYOUT_DEFAULTS = {
+    'screen-profile': { left: 400, right: 380 },
+    'screen-jobs': { left: 300, right: 460 },
+    'screen-letters': { left: 360, right: 380 }
+  };
+  // Once an ad is analysed the right panel carries the requirements and the
+  // gap answers, which is where the work actually happens.
+  var JOBS_ANALYSED = { left: 280, right: 640 };
+
+  function layoutFor(screenId) {
+    var saved = ws.settings.layout && ws.settings.layout[screenId];
+    if (saved) return saved;
+    if (screenId === 'screen-jobs') {
+      var job = openJobId ? findJob(openJobId) : null;
+      if (job && job.analysis) return JOBS_ANALYSED;
+    }
+    return LAYOUT_DEFAULTS[screenId];
+  }
+
+  function applyLayouts() {
+    Object.keys(LAYOUT_DEFAULTS).forEach(function (screenId) {
+      var panels = $(screenId).querySelector('.panels');
+      if (!panels) return;
+      var size = layoutFor(screenId);
+      panels.style.setProperty('--col-left', size.left + 'px');
+      panels.style.setProperty('--col-right', size.right + 'px');
+      var dividers = panels.querySelectorAll('.divider');
+      if (dividers[0]) dividers[0].setAttribute('aria-valuenow', String(size.left));
+      if (dividers[1]) dividers[1].setAttribute('aria-valuenow', String(size.right));
+    });
+  }
+
+  function setSize(screenId, side, px) {
+    var panels = $(screenId).querySelector('.panels');
+    var total = panels.getBoundingClientRect().width;
+    var current = layoutFor(screenId);
+    var other = side === 'left' ? current.right : current.left;
+    // Leave the centre usable no matter how hard someone drags.
+    var max = Math.max(LAYOUT_MIN, total - other - CENTRE_MIN - 10);
+    var width = Math.round(Math.min(max, Math.max(LAYOUT_MIN, px)));
+
+    if (!ws.settings.layout) ws.settings.layout = {};
+    ws.settings.layout[screenId] = {
+      left: side === 'left' ? width : current.left,
+      right: side === 'right' ? width : current.right
+    };
+    applyLayouts();
+  }
+
+  function makeDivider(screenId, side) {
+    var d = document.createElement('div');
+    d.className = 'divider';
+    d.setAttribute('role', 'separator');
+    d.setAttribute('aria-orientation', 'vertical');
+    d.setAttribute('tabindex', '0');
+    d.setAttribute('aria-label', (side === 'left' ? 'Left' : 'Right')
+      + ' panel width. Arrow keys to resize, double-click to reset.');
+
+    // Track the drag ourselves rather than trusting pointer capture, which can
+    // be lost mid-gesture and is not always available.
+    var dragging = false;
+
+    d.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      dragging = true;
+      try { d.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+      d.classList.add('dragging');
+      document.body.classList.add('resizing');
+    });
+
+    d.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var box = $(screenId).querySelector('.panels').getBoundingClientRect();
+      setSize(screenId, side, side === 'left' ? e.clientX - box.left : box.right - e.clientX);
+    });
+
+    function stop(e) {
+      if (!dragging) return;
+      dragging = false;
+      try { d.releasePointerCapture(e.pointerId); } catch (err) { /* already gone */ }
+      d.classList.remove('dragging');
+      document.body.classList.remove('resizing');
+      touchSettings();
+    }
+    d.addEventListener('pointerup', stop);
+    d.addEventListener('pointercancel', stop);
+    // If the pointer is released outside the divider, the gesture still ends.
+    window.addEventListener('pointerup', stop);
+
+    d.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 48 : 16;
+      var current = layoutFor(screenId)[side];
+      if (e.key === 'ArrowLeft') setSize(screenId, side, current + (side === 'left' ? -step : step));
+      else if (e.key === 'ArrowRight') setSize(screenId, side, current + (side === 'left' ? step : -step));
+      else return;
+      e.preventDefault();
+      touchSettings();
+    });
+
+    // Double-click hands the screen back to the automatic width.
+    d.addEventListener('dblclick', function () {
+      if (ws.settings.layout) delete ws.settings.layout[screenId];
+      applyLayouts();
+      touchSettings();
+      toast('Panel widths reset to the default for this screen.');
+    });
+
+    return d;
+  }
+
+  function setupResizers() {
+    Object.keys(LAYOUT_DEFAULTS).forEach(function (screenId) {
+      var panels = $(screenId).querySelector('.panels');
+      if (!panels) return;
+      var centre = panels.querySelector('.panel-centre');
+      var right = panels.querySelector('.panel-right');
+      panels.insertBefore(makeDivider(screenId, 'left'), centre);
+      panels.insertBefore(makeDivider(screenId, 'right'), right);
+    });
+    applyLayouts();
+  }
+
   /* ------------------------------------------------------------------ nav */
 
   var SCREENS = [
@@ -1383,6 +1629,11 @@
     $('new-job').addEventListener('click', newJobDraft);
     $('delete-job').addEventListener('click', deleteJob);
     $('analyse-job').addEventListener('click', function () { analyseAd(this); });
+    $('ad-toggle').addEventListener('click', function () {
+      adEditing = !adEditing;
+      renderJobs();
+      if (adEditing) $('job-ad').focus();
+    });
 
     $('btn-export').addEventListener('click', exportWorkspace);
     $('btn-import').addEventListener('click', function () { $('import-file').click(); });
@@ -1413,6 +1664,7 @@
     }
 
     wire();
+    setupResizers();
     applySettings();
     loadKey();
 

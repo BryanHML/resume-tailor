@@ -29,7 +29,9 @@
       workRightsText: '',
       refereesLine: true,
       spelling: 'en-AU',
-      lastOpenJobId: null
+      lastOpenJobId: null,
+      // Per-screen panel widths, only present once someone drags one.
+      layout: {}
     };
   }
 
@@ -67,12 +69,30 @@
     ws.settings.workRightsText = String(ws.settings.workRightsText || '');
     ws.settings.spelling = 'en-AU';
     if (typeof ws.settings.lastOpenJobId !== 'string') ws.settings.lastOpenJobId = null;
+    ws.settings.layout = sanitiseLayout(ws.settings.layout);
 
     ws.settingsUpdatedAt = String(stored.settingsUpdatedAt || '');
     ws.profile = (stored.profile && typeof stored.profile === 'object') ? stored.profile : null;
     ws.jobs = Array.isArray(stored.jobs) ? stored.jobs.filter(hasId) : [];
     ws.coverLetters = Array.isArray(stored.coverLetters) ? stored.coverLetters.filter(hasId) : [];
     return ws;
+  }
+
+  /* Panel widths come back from a file someone could have edited. A negative
+     or absurd width would render the app unusable, so only sane numbers pass. */
+  function sanitiseLayout(layout) {
+    var out = {};
+    if (!layout || typeof layout !== 'object') return out;
+    Object.keys(layout).forEach(function (screen) {
+      var v = layout[screen];
+      if (!v || typeof v !== 'object') return;
+      var left = Math.round(Number(v.left));
+      var right = Math.round(Number(v.right));
+      if (!isFinite(left) || !isFinite(right)) return;
+      if (left < 160 || right < 160 || left > 1200 || right > 1200) return;
+      out[screen] = { left: left, right: right };
+    });
+    return out;
   }
 
   function hasId(r) {
@@ -283,6 +303,7 @@
     newId: newId,
     newJob: newJob,
     wordCount: wordCount,
+    sanitiseLayout: sanitiseLayout,
     buildProfile: buildProfile,
     liveBullets: liveBullets,
     inventoryLines: inventoryLines,

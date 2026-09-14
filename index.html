@@ -10,7 +10,7 @@
 <!-- ?v= is a cache buster. python -m http.server sends no cache headers, so Chrome
      caches these heuristically and can keep serving an old copy after you pull.
      Bump it when styles.css, core.js or app.js change. -->
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 
@@ -250,10 +250,14 @@
 
         <div class="field field-grow">
           <div class="field-head">
-            <label class="field-label mono" for="job-ad">job ad &middot; paste the full text</label>
-            <span class="mono muted" id="job-wordcount">0 words</span>
+            <label class="field-label mono" for="job-ad" id="job-ad-label">job ad &middot; paste the full text</label>
+            <span class="adhint">
+              <span class="mono muted" id="job-wordcount">0 words</span>
+              <button type="button" class="link-btn" id="ad-toggle" hidden>Edit ad</button>
+            </span>
           </div>
           <textarea id="job-ad" spellcheck="false" placeholder="Paste the whole ad here, including the responsibilities and the requirements. More text gives a better requirements table."></textarea>
+          <div class="adview" id="job-ad-view" hidden></div>
         </div>
 
         <div class="form-foot">
@@ -322,9 +326,9 @@
 
 <div class="toast" id="status" role="status" aria-live="polite" hidden></div>
 
-<script src="core.js?v=5"></script>
-<script src="prompts.js?v=5"></script>
-<script src="claude.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="core.js?v=7"></script>
+<script src="prompts.js?v=7"></script>
+<script src="claude.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

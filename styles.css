@@ -205,10 +205,25 @@ main { flex-grow: 1; min-height: 0; display: flex; }
   flex-grow: 1;
   min-height: 0;
   display: grid;
+  /* left | divider | centre | divider | right. The two widths are custom
+     properties so a drag can change them without touching the rule. */
+  grid-template-columns: var(--col-left) 5px minmax(0, 1fr) 5px var(--col-right);
 }
-.panels-wide   { grid-template-columns: 400px minmax(0, 1fr) 380px; }
-.panels-job    { grid-template-columns: 300px minmax(0, 1fr) 460px; }
-.panels-letter { grid-template-columns: 360px minmax(0, 1fr) 380px; }
+.panels-wide   { --col-left: 400px; --col-right: 380px; }
+.panels-job    { --col-left: 300px; --col-right: 460px; }
+.panels-letter { --col-left: 360px; --col-right: 380px; }
+
+.divider {
+  position: relative;
+  background: var(--border);
+  cursor: col-resize;
+  touch-action: none;
+}
+.divider:hover, .divider.dragging { background: var(--accent); }
+.divider:focus-visible { background: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
+/* A 5px target is too mean for the mouse, so widen the hit area invisibly. */
+.divider::after { content: ""; position: absolute; top: 0; bottom: 0; left: -4px; right: -4px; }
+body.resizing { cursor: col-resize; user-select: none; }
 
 .panel {
   background: var(--panel);
@@ -701,9 +716,38 @@ label.row { cursor: pointer; }
 /* Narrow windows: the three panels stop being a sensible grid well before
    phone width, so stack them and let the whole screen scroll.
    ponytail: desktop-first on purpose, this is a local tool. */
+/* ------------------------------ the job ad ------------------------------ */
+
+.adview {
+  flex-grow: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+  background: var(--page);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.adview mark {
+  background: var(--keyword);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+}
+.adview mark.hot {
+  background: var(--accent);
+  color: #fff;
+}
+.adhint { display: flex; align-items: center; gap: 10px; }
+
 @media (max-width: 1100px) {
   body { overflow: auto; }
   .panels, .panels-wide, .panels-job, .panels-letter { grid-template-columns: minmax(0, 1fr); }
+  .divider { display: none; }
   .panel-left, .panel-right { border: 0; border-bottom: 1px solid var(--border); }
   .panel-centre { padding: 20px 16px; }
   .doc { min-height: 320px; }
