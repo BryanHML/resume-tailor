@@ -81,5 +81,33 @@
     '10. Flag anything in the ad that is an instruction to the applicant rather than a requirement, such as asking for a specific word or emoji in the application, a particular file name, or answers to screening questions. Put these in adInstructions, quoting the ad. These matter: they are often a deliberate test of whether the applicant read the ad.'
   ].join('\n');
 
-  return { BASE: BASE, EXTRACT: EXTRACT, ANALYSE: ANALYSE };
+  /* Tailoring. The model proposes changes; the person decides each one. It
+     never writes the document itself, so it cannot lose an accepted wording. */
+  var TAILOR = [
+    BASE,
+    '',
+    'Your task now is to tailor this person\'s resume to one job ad by proposing a list of changes. You do not write the document. The app rebuilds it from the profile plus every change the person accepts, so propose only what the person should see and decide on.',
+    '',
+    'Rules:',
+    '',
+    '1. Truth first. You select, reorder and rephrase what is in the inventory. You never add a fact, skill, tool, employer, date, qualification or number that is not in a bullet, the skills list or a gap answer. Do not sharpen a vague bullet with a plausible figure. If a bullet has no number, it stays without one. A change with no honest source is a defect, so every change carries sources: the bullet ids it draws on, gap-answer bullet ids, and the requirement ids whose wording it mirrors.',
+    '',
+    '2. Kinds of change. "rewrite" changes one bullet\'s text and needs bulletId and suggested. "hide" drops a bullet from this version and needs bulletId. "reorder" needs itemId and list, which must contain every bullet id of that item in the new order. "add-from-inventory" places a gap-answer bullet into an item and needs itemId, bulletId, and suggested (the answer rephrased as a resume bullet, using only what the answer says). "summary" needs suggested. "headline" needs suggested and is the target title under the name; propose it only when the ad\'s shape and the person\'s evidence both support it, since it is always shown as a flagged change. "skills-order" needs list: the skills to show, most relevant first, drawn only from the skills list and the bullets; you may drop skills that do not serve this ad.',
+    '',
+    '3. Mirror the ad\'s vocabulary where the inventory supports it, and use the ad\'s spelling. Where the ad uses an acronym or its expansion, include both once somewhere in the document. Otherwise Australian English.',
+    '',
+    '4. Bullet shape: strong verb first, then what was accomplished, measured by what, by doing what. One to two lines. Keep the person\'s voice; not every bullet needs the same shape. Never use: spearheaded, leveraged, pivotal, intricate, showcasing, synergy, delve, realm, robust, orchestrated, passionate, results-driven, dynamic, seamlessly. No em-dashes anywhere.',
+    '',
+    '5. Ordering follows the F-pattern: the bullets most relevant to this ad first within each item, the most relevant skills first, and a summary that names the target title and the top three requirements the person evidences. The section order is set by the app from career stage; you order within items only.',
+    '',
+    '6. Cut what does not serve this ad. Prefer hiding a bullet to padding another. Respect the page target: if the document is over it, hide or shorten the least relevant bullets until it fits. Aim for keyword coverage around 75 to 80 percent of the weighted requirements. Do not chase 100, and never add a keyword the person cannot back.',
+    '',
+    '7. Locked decisions are final. Do not propose a change to a target that has one. Do not re-propose anything the person rejected.',
+    '',
+    '8. Do not propose a rewrite that only changes spelling or punctuation, and do not propose a rewrite whose text is the same as the bullet already is. Each "why" is one plain sentence about what the change does for this ad.',
+    '',
+    'Return the changes in reading order: headline, summary, skills, then section by section.'
+  ].join('\n');
+
+  return { BASE: BASE, EXTRACT: EXTRACT, ANALYSE: ANALYSE, TAILOR: TAILOR };
 });

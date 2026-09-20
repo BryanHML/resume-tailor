@@ -363,6 +363,47 @@
     }
   };
 
+  /* The tailor returns changes only, never a whole document. The app rebuilds
+     the document from profile + changes, so the model cannot drop an accepted
+     wording or slip in a bullet with no source. `original` is deliberately not
+     in the schema: it is filled from the profile, never trusted from the model. */
+  var TAILOR_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['changes', 'note'],
+    properties: {
+      note: { type: 'string', description: 'One sentence for the person on what you did and why, or what you could not do.' },
+      changes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['kind', 'itemId', 'bulletId', 'suggested', 'list', 'why', 'sources'],
+          properties: {
+            kind: { type: 'string', enum: ['rewrite', 'hide', 'reorder', 'add-from-inventory', 'summary', 'headline', 'skills-order'] },
+            itemId: { type: 'string', description: 'For reorder and add-from-inventory: the item (role, project, degree) id. Empty string otherwise.' },
+            bulletId: { type: 'string', description: 'For rewrite, hide and add-from-inventory: the bullet id. Empty string otherwise.' },
+            suggested: { type: 'string', description: 'The new text for rewrite, summary, headline and add-from-inventory. Empty string otherwise.' },
+            list: { type: 'array', items: { type: 'string' }, description: 'For reorder: every bullet id of the item in the new order. For skills-order: the skills to show, in order. Empty otherwise.' },
+            why: { type: 'string', description: 'One sentence the person will read next to the diff.' },
+            sources: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['type', 'id'],
+                properties: {
+                  type: { type: 'string', enum: ['profile', 'gap', 'ad'] },
+                  id: { type: 'string', description: 'A bullet id for profile or gap, a requirement id for ad.' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
   /* ------------------------------------------------------------- requests */
 
   function baseBody(model, effort, maxTokens) {
@@ -417,11 +458,58 @@
     return body;
   }
 
+  /* Tailor and trim share one request: trim is a tailor run whose only job is
+     to get under the page budget. Streaming gives the larger max_tokens room. */
+  function tailorRequest(opts) {
+    var prompts = opts.prompts;
+    var body = baseBody(opts.model, opts.effort, 32000);
+    body.system = prompts.TAILOR;
+    body.output_config.format = { type: 'json_schema', schema: TAILOR_SCHEMA };
+
+    var req = (opts.requirements || []).map(function (r) {
+      return r.id + ': ' + r.name + ' · weight ' + r.weight + ' · ' + (r.required ? 'required' : 'preferred')
+        + ' · ' + r.status + (r.aliases && r.aliases.length ? ' · also: ' + r.aliases.join(', ') : '');
+    }).join('\n');
+
+    var parts = [
+      'Career stage: ' + opts.careerStage + '. Page target: ' + opts.pageTarget + ' A4 page' + (opts.pageTarget > 1 ? 's' : '')
+        + ', about ' + (opts.pageTarget * 52) + ' lines of 11pt text. The current document is about ' + opts.currentLines + ' lines.',
+      'Target role: ' + (opts.role || 'unknown') + '. ' + (opts.shape || ''),
+      'Job title: ' + (opts.title || 'not given') + (opts.company ? ' at ' + opts.company : ''),
+      '',
+      'Requirements from the ad, weighted:\n' + req,
+      '',
+      'Document outline (section id, kind, then item ids with their bullet ids in current order):\n' + opts.outline,
+      '',
+      'Bullet inventory, one per line as "id: text". Lines marked [from your answer] are the person\'s own answers to gap questions and may be added to an item:\n' + opts.inventory,
+      '',
+      'Skills list as it stands:\n' + opts.skills,
+      '',
+      'Current summary: ' + (opts.summary ? '"' + opts.summary + '"' : 'none'),
+    ];
+    if (opts.locked && opts.locked.length) {
+      parts.push('', 'Decisions already made. These are locked, preserve them verbatim and do not propose a change to the same target:\n' + opts.locked.join('\n'));
+    }
+    if (opts.rejected && opts.rejected.length) {
+      parts.push('', 'Suggestions the person rejected. Do not propose these again:\n' + opts.rejected.join('\n'));
+    }
+    if (opts.trimLines) {
+      parts.push('', 'TRIM ONLY. The document overflows the page target by about ' + opts.trimLines
+        + ' lines. Propose only hide and rewrite changes that shorten it by at least that much, taking the least relevant bullets first. Do not add anything.');
+    }
+    parts.push('', 'The job ad:\n\n' + opts.adText);
+
+    body.messages = [{ role: 'user', content: parts.join('\n') }];
+    return body;
+  }
+
   return {
     PRICING: PRICING,
     ROLE_CODES: ROLE_CODES,
     EXTRACT_SCHEMA: EXTRACT_SCHEMA,
     ANALYSE_SCHEMA: ANALYSE_SCHEMA,
+    TAILOR_SCHEMA: TAILOR_SCHEMA,
+    tailorRequest: tailorRequest,
     headers: headers,
     cost: cost,
     money: money,

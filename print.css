@@ -1,0 +1,92 @@
+/* The exported document. Loaded on screen as well, so the preview is the
+   export: same markup, same stylesheet, A4 at 96dpi (794 x 1123px).
+   Arial only, single column, no tables, no floats, real bullets. */
+
+/* One sheet. Real A4 in mm so the print is exact and the screen matches it
+   at 100% zoom (210mm is 794px at 96dpi). Content that does not fit flows
+   onto the next .page; a sheet never grows. */
+.page {
+  width: 210mm;
+  height: 297mm;
+  box-sizing: border-box;
+  padding: 17mm;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.32;
+  position: relative;
+}
+.page .p-inner { height: 100%; }
+
+.page .p-name { font-size: 16pt; font-weight: bold; letter-spacing: 0.01em; margin: 0; }
+.page .p-headline { font-size: 11pt; margin: 2px 0 0; }
+.page .p-contact { margin: 3px 0 0; font-size: 9.5pt; }
+.page .p-head { margin-bottom: 10px; }
+
+.page h2 {
+  font-size: 10.5pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 11px 0 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #000;
+}
+
+.page .p-item { margin-top: 5px; }
+.page .p-item-head { display: flex; justify-content: space-between; gap: 12px; }
+.page .p-item-head b { font-weight: bold; }
+.page .p-dates { white-space: nowrap; }
+.page ul { margin: 2px 0 0; padding-left: 16px; }
+.page li { margin: 0 0 2px; padding: 1px 3px; border-radius: 2px; }
+.page .p-block { padding: 1px 3px; border-radius: 2px; margin: 0; }
+.page .p-skills { margin: 0; }
+.page .p-referees { margin-top: 10px; font-size: 9.5pt; }
+
+/* --- screen-only editor states. None of this survives print. --- */
+.page .sel { cursor: pointer; }
+.page .sel:hover { background: #fbf8f3; }
+.page .sel.pending { background: #fbeee6; }
+.page .sel.pending .p-kw { background: #f6d9c9; }
+.page .sel.accepted { background: #e6f0e8; }
+.page .sel.edited { background: #e6f0e8; }
+.page .sel.selected { outline: 2px solid #b4552c; outline-offset: 0; background: #fbeee6; }
+.page .sel.hidden-block { display: none; }
+.page .p-kw { background: #f6d9c9; }
+.page .p-badge {
+  font-family: 'IBM Plex Mono', Consolas, monospace;
+  font-size: 8pt;
+  padding: 0 4px;
+  border-radius: 2px;
+  margin-left: 6px;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+.page .p-badge.amber { background: #fbf0d9; color: #8a5f12; }
+.page .p-badge.red { background: #fde7e3; color: #8f3022; }
+.page .p-badge.accent { background: #b4552c; color: #fff; }
+.page .p-edit {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 3px 4px;
+  border: 1px solid #b4552c;
+  border-radius: 2px;
+  resize: vertical;
+  min-height: 3em;
+}
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { background: #fff; height: auto; overflow: visible; }
+  /* Everything but the print root goes; the page carries its own margins as
+     padding, which is what keeps the browser's header and footer off it. */
+  body > :not(#print-root) { display: none !important; }
+  #print-root { display: block; }
+  #print-root .page { box-shadow: none; border: 0; margin: 0; break-after: page; }
+  #print-root .page:last-child { break-after: auto; }
+  .page .sel, .page .sel.pending, .page .sel.accepted, .page .sel.edited, .page .sel.selected { background: none; outline: none; }
+  .page .p-kw { background: none; }
+  .page .p-badge { display: none; }
+}

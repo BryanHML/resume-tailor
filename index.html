@@ -9,8 +9,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <!-- ?v= is a cache buster. python -m http.server sends no cache headers, so Chrome
      caches these heuristically and can keep serving an old copy after you pull.
-     Bump it when styles.css, core.js or app.js change. -->
-<link rel="stylesheet" href="styles.css?v=7">
+     Bump it when any of the css or js files change. -->
+<link rel="stylesheet" href="styles.css?v=11">
+<link rel="stylesheet" href="print.css?v=11">
 </head>
 <body>
 
@@ -174,7 +175,7 @@
           </button>
           <input type="file" id="resume-file" accept="application/pdf,.pdf" hidden>
         </div>
-        <div class="doc" id="inventory"></div>
+        <div class="pagehost" id="inventory"></div>
       </div>
 
       <!-- Right: inspector -->
@@ -281,6 +282,72 @@
     </div>
   </section>
 
+  <!-- ============================ TAILOR ============================= -->
+  <section class="screen" id="screen-tailor" role="tabpanel" aria-labelledby="nav-jobs" hidden>
+    <div class="strip strip-5">
+      <div class="strip-title">
+        <h1 id="t-title">Tailor</h1>
+        <div class="chips mono" id="t-chips"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Keyword coverage</div>
+        <div class="metric-value"><span class="mono num" id="t-coverage">&ndash;</span><span class="mono sub">target 75&ndash;80</span></div>
+        <div class="bar"><div id="t-coverage-bar"></div></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Parse safety</div>
+        <div class="metric-value"><span class="mono num" id="t-safety">&ndash;</span><span class="mono sub" id="t-safety-sub">pass</span></div>
+        <div class="bar"><div id="t-safety-bar"></div></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Content flags</div>
+        <div class="metric-value"><span class="mono num" id="t-flags">&ndash;</span><span class="mono sub" id="t-flags-sub"></span></div>
+        <div class="bar"><div id="t-flags-bar"></div></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Page fit</div>
+        <div class="metric-value"><span class="mono num" id="t-fit">&ndash;</span><span class="mono sub" id="t-fit-sub">of page 1</span></div>
+        <div class="bar"><div id="t-fit-bar"></div></div>
+      </div>
+    </div>
+    <div class="panels panels-tailor">
+      <aside class="panel panel-left">
+        <div class="panel-head">
+          <button type="button" class="link-btn" id="t-back">&larr; Back to the ad</button>
+          <span class="mono muted" id="t-req-count"></span>
+        </div>
+        <div id="t-requirements"></div>
+      </aside>
+
+      <div class="panel-centre">
+        <div class="doc-toolbar mono">
+          <span id="t-version">not tailored yet</span>
+          <span class="toolbar-actions">
+            <button type="button" class="btn btn-ghost" id="t-trim" hidden>Trim to fit</button>
+            <button type="button" class="btn btn-ghost" id="t-tailor">Tailor</button>
+            <button type="button" class="btn btn-accent" id="t-export" disabled>Export PDF</button>
+          </span>
+        </div>
+        <div class="pagehost" id="t-pagehost" tabindex="0" aria-label="Tailored resume. Click a block to inspect it. A accepts, R rejects, E edits, J and K move between changes."></div>
+      </div>
+
+      <aside class="panel panel-right">
+        <div class="panel-head">
+          <h2 id="t-change-title">Change</h2>
+          <span class="mono muted" id="t-change-pos"></span>
+        </div>
+        <div id="t-inspector"></div>
+        <div class="panel-foot">
+          <div class="panel-head">
+            <h2 class="sm">Lint</h2>
+            <span class="mono muted" id="t-lint-count"></span>
+          </div>
+          <div class="panel-body" id="t-lint"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
   <!-- ========================== COVER LETTERS ======================== -->
   <section class="screen" id="screen-letters" role="tabpanel" aria-labelledby="nav-letters" hidden>
     <div class="strip strip-4">
@@ -326,9 +393,9 @@
 
 <div class="toast" id="status" role="status" aria-live="polite" hidden></div>
 
-<script src="core.js?v=7"></script>
-<script src="prompts.js?v=7"></script>
-<script src="claude.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="core.js?v=11"></script>
+<script src="prompts.js?v=11"></script>
+<script src="claude.js?v=11"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

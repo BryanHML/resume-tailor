@@ -209,7 +209,7 @@ main { flex-grow: 1; min-height: 0; display: flex; }
      properties so a drag can change them without touching the rule. */
   grid-template-columns: var(--col-left) 5px minmax(0, 1fr) 5px var(--col-right);
 }
-.panels-wide   { --col-left: 400px; --col-right: 380px; }
+.panels-wide   { --col-left: 300px; --col-right: 320px; }
 .panels-job    { --col-left: 300px; --col-right: 460px; }
 .panels-letter { --col-left: 360px; --col-right: 380px; }
 
@@ -407,6 +407,7 @@ input.mono { font-family: var(--mono); font-size: 12px; }
 .tag { font-family: var(--mono); font-size: 10.5px; padding: 1px 6px; border-radius: 3px; background: var(--track); color: var(--muted); flex-shrink: 0; }
 .tag.new { background: var(--track); }
 .tag.analysed { background: var(--amber-tint); color: var(--amber-ink); }
+.tag.tailoring { background: var(--accent-tint); color: var(--accent-ink); }
 .tag.exported { background: var(--green-tint); color: var(--green-ink); }
 
 /* job form */
@@ -536,6 +537,7 @@ textarea {
 }
 .reqhead { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); padding-bottom: 6px; }
 .reqrow { min-height: 38px; border-top: 1px solid var(--divider); font-size: 12px; cursor: pointer; }
+.reqhead.withcv, .reqrow.withcv { grid-template-columns: minmax(0, 1fr) 26px 22px 22px 70px; gap: 6px; padding: 0 12px; }
 .reqrow:hover { background: var(--track); }
 .reqrow:last-of-type { border-bottom: 1px solid var(--divider); }
 .right { text-align: right; }
@@ -744,14 +746,87 @@ label.row { cursor: pointer; }
 }
 .adhint { display: flex; align-items: center; gap: 10px; }
 
+/* The profile inventory sits on A4 sheets too, paginated like the tailored
+   resume, so the person sees how much of a page their material fills. */
+#screen-profile .panel-centre { padding: 12px 8px; }
+#screen-profile .doc-toolbar { width: 210mm; max-width: none; }
+#inventory.pagehost.empty { justify-content: center; }
+#inventory .filecard, #inventory .form-actions, #inventory .note { width: 210mm; flex-shrink: 0; }
+#inventory .sheets { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+#inventory .page { font-family: var(--sans); color: var(--ink); font-size: 12.5px; line-height: 1.4; }
+#inventory .page .p-inner { display: flex; flex-direction: column; gap: 6px; }
+#inventory .inv-heading { margin-top: 10px; }
+#inventory .inv-bullet { width: auto; }
+
+/* ------------------------------ tailor -------------------------------- */
+
+.strip-5 { grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); }
+.panels-tailor { --col-left: 300px; --col-right: 310px; }
+#screen-tailor .panel-centre { padding: 12px 8px; }
+.toolbar-actions { display: flex; align-items: center; gap: 8px; }
+#screen-tailor .doc-toolbar { width: 794px; }
+.doc-toolbar .btn { height: 36px; padding: 0 12px; }
+
+/* The page is real A4 (794px) and is never scaled: what you see is the size
+   you will print. A narrow panel scrolls sideways instead of shrinking it. */
+.pagehost {
+  width: 100%;
+  flex-grow: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 24px;
+}
+.pagehost:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pagehost .page, #inventory .page {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(32, 27, 22, 0.06), 0 8px 24px rgba(32, 27, 22, 0.06);
+}
+.pagehost.empty { align-items: center; }
+.pagehost .empty-inner { padding: 40px; }
+
+/* diff inspector */
+.diff { display: flex; flex-direction: column; padding: 14px 20px; border-bottom: 1px solid var(--divider); }
+.diff-line { display: flex; gap: 10px; padding: 8px 10px; font-family: var(--mono); font-size: 12px; line-height: 1.5; }
+.diff-line.minus { background: var(--red-tint); color: #6b2a20; }
+.diff-line.plus { background: var(--green-tint); color: #1f3f28; }
+.diff-line .sign { flex-shrink: 0; }
+.diff-line.minus .sign { color: var(--red); }
+.diff-line.plus .sign { color: var(--green); }
+.diff-line del { text-decoration: line-through; text-decoration-color: var(--red); background: #f9d2cb; }
+.diff-line ins { text-decoration: none; background: #cfe4d3; }
+.inspect-body { display: flex; flex-direction: column; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--divider); }
+.decide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 14px 20px 6px; }
+.decide .btn { padding: 0 8px; }
+.decide .key { font-family: var(--mono); font-size: 11px; opacity: 0.75; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover:not([disabled]) { background: var(--green-ink); }
+.prevnext { display: flex; justify-content: space-between; padding: 6px 20px 14px; font-size: 11.5px; }
+.decision-chip { font-family: var(--mono); font-size: 11px; padding: 2px 6px; border-radius: 3px; }
+.decision-chip.pending { background: var(--amber-tint); color: var(--amber-ink); }
+.decision-chip.accepted, .decision-chip.edited { background: var(--green-tint); color: var(--green-ink); }
+.decision-chip.rejected { background: var(--red-tint); color: var(--red-ink); }
+.numcheck { display: flex; align-items: center; gap: 6px; }
+.lintrow { display: flex; gap: 10px; min-height: 28px; align-items: center; font-family: var(--mono); font-size: 11.5px; cursor: pointer; }
+.lintrow:hover { background: var(--track); }
+.lintrow .kind { width: 64px; flex-shrink: 0; }
+.lintrow .kind.red { color: var(--red); }
+.lintrow .kind.amber { color: var(--amber-ink); }
+.blockmenu { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 0 20px 14px; }
+
 @media (max-width: 1100px) {
   body { overflow: auto; }
-  .panels, .panels-wide, .panels-job, .panels-letter { grid-template-columns: minmax(0, 1fr); }
+  .panels, .panels-wide, .panels-job, .panels-letter, .panels-tailor { grid-template-columns: minmax(0, 1fr); }
   .divider { display: none; }
   .panel-left, .panel-right { border: 0; border-bottom: 1px solid var(--border); }
   .panel-centre { padding: 20px 16px; }
   .doc { min-height: 320px; }
-  .strip { grid-template-columns: minmax(0, 1fr); }
+  .strip, .strip-5 { grid-template-columns: minmax(0, 1fr); }
   .strip-title, .metric { border-right: 0; border-bottom: 1px solid var(--border); }
   .chrome { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 12px; }
 }

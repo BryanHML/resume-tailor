@@ -497,14 +497,14 @@
     host.textContent = '';
 
     if (!stagedResume && !ws.profile) {
-      host.className = 'doc empty';
+      host.className = 'pagehost empty';
       host.appendChild(buildEmpty('No profile yet',
         ['Add your resume as a PDF to start. Every bullet is pulled out word for word, tagged, and stored with the real numbers behind it.',
          'Nothing here is generated. The inventory only ever holds what you wrote or told it.']));
       return;
     }
 
-    host.className = 'doc doc-pad';
+    host.className = 'pagehost';
 
     if (stagedResume) {
       var card = el('div', 'filecard');
@@ -536,56 +536,56 @@
 
     if (!ws.profile) return;
 
+    // The inventory sits on A4 sheets like the tailored resume, so the person
+    // sees how much of a page their raw material fills. The staged-file card
+    // above stays outside the sheets; the flow below is paginated into them.
     var p = ws.profile;
+    var flow = [];
 
-    var header = el('div', 'inv-header');
+    var header = keep(el('div', 'inv-header'));
     header.appendChild(el('div', 'inv-name', p.basics.name || 'Unnamed'));
     var contact = [p.basics.city, p.basics.state, p.basics.phone, p.basics.email, p.basics.linkedin]
       .filter(Boolean).join(' · ');
     header.appendChild(el('div', 'inv-contact', contact));
-    host.appendChild(header);
+    flow.push(header);
 
     if (p.skills && p.skills.length) {
-      var skillBlock = el('div', 'inv-section');
-      skillBlock.appendChild(el('div', 'inv-heading', 'Skills'));
+      flow.push(keep(el('div', 'inv-heading', 'Skills')));
       p.skills.forEach(function (group) {
         var row = el('div', 'inv-skillrow');
         row.appendChild(el('span', 'inv-skillgroup', group.group + ': '));
         row.appendChild(document.createTextNode(group.items.join(' · ')));
-        skillBlock.appendChild(row);
+        flow.push(row);
       });
-      host.appendChild(skillBlock);
     }
 
     (p.sections || []).forEach(function (section) {
-      var block = el('div', 'inv-section');
-      block.appendChild(el('div', 'inv-heading', section.title));
+      flow.push(keep(el('div', 'inv-heading', section.title)));
       (section.items || []).forEach(function (item) {
-        var head = el('div', 'inv-item');
+        var head = keep(el('div', 'inv-item'));
         var left = el('div', 'inv-item-name');
         left.appendChild(el('strong', null, item.heading));
         if (item.subheading) left.appendChild(document.createTextNode(' · ' + item.subheading));
         head.appendChild(left);
         var dates = [item.dates.start, item.dates.end].filter(Boolean).join(' – ');
         if (dates) head.appendChild(el('span', 'inv-dates mono', dates));
-        block.appendChild(head);
-
+        flow.push(head);
         (item.bullets || []).forEach(function (id) {
           var b = p.bullets[id];
-          if (!b || b.retired) return;
-          block.appendChild(bulletBlock(b));
+          if (b && !b.retired) flow.push(bulletBlock(b));
         });
       });
-      host.appendChild(block);
     });
 
     var fromGaps = RT.liveBullets(p).filter(function (b) { return b.source && b.source.type === 'gap'; });
     if (fromGaps.length) {
-      var gapBlock = el('div', 'inv-section');
-      gapBlock.appendChild(el('div', 'inv-heading', 'From your answers'));
-      fromGaps.forEach(function (b) { gapBlock.appendChild(bulletBlock(b)); });
-      host.appendChild(gapBlock);
+      flow.push(keep(el('div', 'inv-heading', 'From your answers')));
+      fromGaps.forEach(function (b) { flow.push(bulletBlock(b)); });
     }
+
+    var sheets = el('div', 'sheets');
+    host.appendChild(sheets);
+    paginate(sheets, flow);
   }
 
   function bulletBlock(b) {
@@ -950,9 +950,10 @@
 
     renderAdPane(job);
     renderJobStrip(job);
-    renderRequirements(job);
+    renderRequirements(job, $('requirements'), null);
     applyLayouts(); // the analysed state has its own default widths
     renderCounts();
+    if (tailorOpen) renderTailor();
   }
 
   /* ---------------------------------------------------------- the ad pane
@@ -1085,11 +1086,12 @@
       : 'open questions';
   }
 
-  function renderRequirements(job) {
-    var host = $('requirements');
+  /* Shared by the Job screen (host = #requirements) and the Tailor screen,
+     where `cv` carries how often each requirement appears in the document. */
+  function renderRequirements(job, host, cv) {
     host.textContent = '';
     var a = job && job.analysis;
-    $('req-count').textContent = a ? a.requirements.length + ' from the ad' : '';
+    $(cv ? 't-req-count' : 'req-count').textContent = a ? a.requirements.length + ' from the ad' : '';
 
     if (!a) {
       var body = el('div', 'panel-body');
@@ -1099,7 +1101,7 @@
       return;
     }
 
-    if (a.adInstructions && a.adInstructions.length) {
+    if (!cv && a.adInstructions && a.adInstructions.length) {
       var callout = el('div', 'callout');
       callout.appendChild(el('div', 'callout-head', 'The ad asks you to do this'));
       a.adInstructions.forEach(function (x) {
@@ -1111,14 +1113,14 @@
       host.appendChild(callout);
     }
 
-    var head = el('div', 'reqhead mono');
-    ['requirement', 'wt', 'ad', 'status'].forEach(function (label, i) {
+    var head = el('div', 'reqhead mono' + (cv ? ' withcv' : ''));
+    (cv ? ['requirement', 'wt', 'ad', 'cv', 'status'] : ['requirement', 'wt', 'ad', 'status']).forEach(function (label, i) {
       head.appendChild(el('div', i === 0 ? null : 'right', label));
     });
     host.appendChild(head);
 
     a.requirements.slice().sort(function (x, y) { return y.weight - x.weight; }).forEach(function (r) {
-      var row = el('div', 'reqrow mono');
+      var row = el('div', 'reqrow mono' + (cv ? ' withcv' : ''));
       var name = el('div', 'reqname');
       name.textContent = r.name;
       name.title = r.name + (r.required ? ' (required)' : ' (preferred)')
@@ -1127,34 +1129,58 @@
       row.appendChild(name);
       row.appendChild(el('div', 'right', String(r.weight)));
       row.appendChild(el('div', 'right', String(r.adCount)));
+      if (cv) row.appendChild(el('div', 'right' + (cv[r.id] ? '' : ' muted'), String(cv[r.id] || 0)));
       var status = el('div', 'right');
       status.appendChild(el('span', 'tag ' + r.status, r.status));
       row.appendChild(status);
       row.addEventListener('click', function () {
-        if (!focusRequirement(r.id)) showEvidence(r);
+        if (cv) { if (!focusTerm(r)) showEvidence(r); }
+        else if (!focusRequirement(r.id)) showEvidence(r);
       });
       host.appendChild(row);
     });
 
-    if (a.predicted && a.predicted.length) {
+    if (!cv && a.predicted && a.predicted.length) {
       var pred = el('div', 'predicted mono');
       pred.appendChild(el('span', 'muted', 'expected but not in the ad: '));
       pred.appendChild(document.createTextNode(a.predicted.join(' · ')));
       host.appendChild(pred);
     }
 
-    if (job.gaps && job.gaps.length) {
+    var gaps = (job.gaps || []).filter(function (g) { return !cv || (!g.answer && !g.skipped); });
+    if (gaps.length) {
       var gapHead = el('div', 'panel-head');
-      gapHead.appendChild(el('h2', 'sm', 'Gap questions'));
+      gapHead.appendChild(el('h2', 'sm', cv ? 'Gap questions still open' : 'Gap questions'));
       var openCount = job.gaps.filter(function (g) { return !g.answer && !g.skipped; }).length;
       gapHead.appendChild(el('span', 'mono muted', openCount + ' open'));
       host.appendChild(gapHead);
 
       var gapBody = el('div', 'panel-body');
-      job.gaps.forEach(function (g) {
+      gaps.forEach(function (g) {
         gapBody.appendChild(gapCard(job, g));
       });
       host.appendChild(gapBody);
+    }
+
+    if (!cv) {
+      var foot = el('div', 'panel-body');
+      var go = el('button', 'btn btn-accent btn-block', job.tailored && job.tailored.version ? 'Open tailored resume' : 'Tailor resume');
+      go.type = 'button';
+      go.addEventListener('click', function () { openTailor(); });
+      foot.appendChild(go);
+      var openGaps = job.gaps.filter(function (g) { return !g.answer && !g.skipped; }).length;
+      if (openGaps) {
+        var skip = el('button', 'link-btn', 'Skip the ' + openGaps + ' open ' + (openGaps === 1 ? 'gap' : 'gaps') + ' and tailor anyway');
+        skip.type = 'button';
+        skip.addEventListener('click', function () {
+          job.gaps.forEach(function (g) { if (!g.answer) g.skipped = true; });
+          RT.stamp(job);
+          scheduleSave();
+          openTailor();
+        });
+        foot.appendChild(skip);
+      }
+      host.appendChild(foot);
     }
   }
 
@@ -1249,6 +1275,793 @@
     if (!iso) return '';
     var d = new Date(iso);
     return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  /* ---------------------------------------------------------------- tailor
+     The document on screen is rebuilt from profile + changes on every render
+     (RT.buildDoc). Nothing here edits text in place: every action, including
+     the person's own edits, becomes a change with a decision, so the record of
+     what came from where is never lost. */
+
+  var tailorOpen = false;
+  var selectedBlockId = null;
+  var editingBlockId = null;
+  var undoStack = [];
+  var redoStack = [];
+  var lastDoc = null;
+  var lastLint = [];
+  var lastFit = null;
+  var PRINTABLE = 994; // 297mm less two 17mm margins, at 96dpi
+  var LINE_PX = 18.5; // 10.5pt Arial at line-height 1.32
+
+  function openTailor() {
+    var job = openJobId ? findJob(openJobId) : null;
+    if (!job || !job.analysis || !ws.profile) return;
+    if (!job.tailored) job.tailored = RT.newTailored();
+    tailorOpen = true;
+    selectedBlockId = null;
+    editingBlockId = null;
+    undoStack = [];
+    redoStack = [];
+    $('screen-jobs').hidden = true;
+    $('screen-tailor').hidden = false;
+    applyLayouts();
+    renderTailor();
+    if (!job.tailored.version && apiKey && !busy) $('t-tailor').focus();
+    else $('t-pagehost').focus();
+  }
+
+  function closeTailor() {
+    tailorOpen = false;
+    $('screen-tailor').hidden = true;
+    $('screen-jobs').hidden = false;
+    renderJobs();
+  }
+
+  function currentJob() {
+    return tailorOpen && openJobId ? findJob(openJobId) : null;
+  }
+
+  function findChange(job, id) {
+    if (!job || !job.tailored || !id) return null;
+    for (var i = 0; i < job.tailored.changes.length; i++) if (job.tailored.changes[i].id === id) return job.tailored.changes[i];
+    return null;
+  }
+
+  /* Undo is in memory only, as snapshots of the change list, per the spec. */
+  function snapshot(job) {
+    undoStack.push(JSON.stringify(job.tailored.changes));
+    if (undoStack.length > 50) undoStack.shift();
+    redoStack = [];
+  }
+
+  function undo(job) {
+    if (!undoStack.length) return;
+    redoStack.push(JSON.stringify(job.tailored.changes));
+    job.tailored.changes = JSON.parse(undoStack.pop());
+    afterChange(job);
+  }
+
+  function redo(job) {
+    if (!redoStack.length) return;
+    undoStack.push(JSON.stringify(job.tailored.changes));
+    job.tailored.changes = JSON.parse(redoStack.pop());
+    afterChange(job);
+  }
+
+  function afterChange(job) {
+    job.tailored.updatedAt = new Date().toISOString();
+    if (job.status === 'analysed') job.status = 'tailoring';
+    RT.stamp(job);
+    scheduleSave();
+    renderTailor();
+  }
+
+  function decide(job, change, decision) {
+    if (!change) return;
+    snapshot(job);
+    change.decision = decision;
+    if (decision !== 'edited') change.editedText = null;
+    afterChange(job);
+  }
+
+  function userChange(job, fields) {
+    var n = job.tailored.changes.length + 1;
+    var c = Object.assign({
+      id: 'c' + n, target: { sectionId: '', itemId: '', bulletId: '' }, original: '', suggested: '', list: [],
+      why: '', sources: [{ type: 'user', id: '' }], decision: 'accepted', editedText: null
+    }, fields);
+    // Ids must be unique across the list even after deletions, so bump past any clash.
+    while (findChange(job, c.id)) c.id = 'c' + (++n);
+    job.tailored.changes.push(c);
+    return c;
+  }
+
+  /* Editing a block. With a change on it, the edit becomes that change's
+     final text. Without one, the edit is a new change the person made. */
+  function saveEdit(job, block, text) {
+    text = text.trim();
+    snapshot(job);
+    var c = findChange(job, block.changeId);
+    if (c && c.kind !== 'hide') {
+      if (text === c.original) { c.decision = 'rejected'; c.editedText = null; }
+      else if (text === c.suggested) { c.decision = 'accepted'; c.editedText = null; }
+      else { c.decision = 'edited'; c.editedText = text; }
+    } else if (block.id === 'summary' || block.id === 'headline') {
+      var orig = block.id === 'summary' ? (ws.profile.summary || '') : '';
+      if (text !== orig) userChange(job, { kind: block.id, original: orig, suggested: text, editedText: text, decision: 'edited', why: 'Written by you.' });
+    } else if (block.id === 'skills') {
+      userChange(job, { kind: 'skills-order', original: RT.flatSkills(ws.profile).join(' · '), editedText: text, decision: 'edited', why: 'Ordered by you.' });
+    } else {
+      var b = ws.profile.bullets[block.id];
+      if (b && text !== b.text) {
+        userChange(job, { kind: 'rewrite', target: { sectionId: '', itemId: block.itemId, bulletId: block.id },
+          original: b.text, suggested: text, editedText: text, decision: 'edited', why: 'Rewritten by you.' });
+      }
+    }
+    editingBlockId = null;
+    afterChange(job);
+  }
+
+  function toggleHide(job, block) {
+    snapshot(job);
+    var hide = findChange(job, block.hideId);
+    if (hide) hide.decision = hide.decision === 'rejected' ? 'accepted' : 'rejected';
+    else userChange(job, { kind: 'hide', target: { sectionId: '', itemId: block.itemId, bulletId: block.id }, original: block.text, why: 'Hidden by you.' });
+    afterChange(job);
+  }
+
+  function moveBullet(job, block, dir) {
+    var item = null;
+    lastDoc.sections.forEach(function (s) { s.items.forEach(function (it) { if (it.id === block.itemId) item = it; }); });
+    if (!item) return;
+    var ids = item.bullets.map(function (b) { return b.id; });
+    var i = ids.indexOf(block.id);
+    var j = i + dir;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    ids.splice(i, 1);
+    ids.splice(j, 0, block.id);
+    snapshot(job);
+    var existing = null;
+    job.tailored.changes.forEach(function (c) { if (c.kind === 'reorder' && c.target.itemId === block.itemId) existing = c; });
+    if (existing) { existing.list = ids; existing.decision = 'accepted'; existing.sources = [{ type: 'user', id: '' }]; existing.why = 'Ordered by you.'; }
+    else userChange(job, { kind: 'reorder', target: { sectionId: '', itemId: block.itemId, bulletId: '' }, list: ids, why: 'Ordered by you.' });
+    afterChange(job);
+  }
+
+  /* ------------------------------------------------------------ the call */
+
+  function runTailor(button, trimLines) {
+    var job = currentJob();
+    if (!job) return;
+    var doc = RT.buildDoc(ws.profile, job.tailored, ws.settings);
+    var decisions = RT.decisionsForModel(job.tailored.changes);
+    var reqs = job.analysis.requirements;
+
+    runCall(trimLines ? 'Trimming' : 'Tailoring', button, function () {
+      return RTClaude.tailorRequest({
+        prompts: RTPrompts,
+        model: ws.settings.model,
+        effort: ws.settings.effort,
+        careerStage: ws.settings.careerStage,
+        pageTarget: ws.settings.pageTarget,
+        currentLines: RT.estimateLines(doc),
+        role: job.role,
+        shape: job.shape,
+        title: job.title,
+        company: job.company,
+        requirements: reqs,
+        outline: RT.outlineForModel(ws.profile),
+        inventory: RT.inventoryLines(ws.profile),
+        skills: RT.skillLines(ws.profile),
+        summary: ws.profile.summary,
+        locked: decisions.locked,
+        rejected: decisions.rejected,
+        trimLines: trimLines || 0,
+        adText: job.adText
+      });
+    }, function (result) {
+      snapshot(job);
+      // Pending proposals from the last run are superseded; decisions stay.
+      var kept = job.tailored.changes.filter(function (c) { return c.decision !== 'pending'; });
+      var fresh = RT.normaliseChanges(result.changes, ws.profile, kept);
+      job.tailored.changes = kept.concat(fresh);
+      job.tailored.version += 1;
+      job.tailored.note = result.note || '';
+      job.tailored.updatedAt = new Date().toISOString();
+      job.status = 'tailoring';
+      selectedBlockId = null;
+      RT.stamp(job);
+      flushSave();
+      if (fresh.length) selectedBlockId = blockIdForChange(fresh[0]);
+      if (result.note) toast(result.note);
+    });
+  }
+
+  function blockIdForChange(c) {
+    if (c.kind === 'summary' || c.kind === 'headline') return c.kind;
+    if (c.kind === 'skills-order') return 'skills';
+    if (c.kind === 'reorder') return c.list[0] || null;
+    return c.target.bulletId;
+  }
+
+  /* ---------------------------------------------------------------- render */
+
+  function renderTailor() {
+    var job = currentJob();
+    if (!job) return;
+    var t = job.tailored;
+    lastDoc = RT.buildDoc(ws.profile, t, ws.settings);
+    lastLint = RT.lintDoc(lastDoc, job.adText);
+    var known = RT.profileNumbers(ws.profile);
+    var hits = RT.keywordHits(RT.docText(lastDoc), job.analysis.requirements);
+    var blocks = RT.docBlocks(lastDoc);
+    var pending = t.changes.filter(function (c) { return c.decision === 'pending'; }).length;
+    var decided = t.changes.filter(function (c) { return c.decision !== 'pending'; }).length;
+
+    // Number and skill checks per change, cached on the change for the inspector.
+    t.changes.forEach(function (c) {
+      if (c.decision === 'rejected') { c.numbersCheck = { ok: true, unmatched: [] }; return; }
+      var text = c.kind === 'skills-order' ? '' : RT.effectiveText(c);
+      c.numbersCheck = RT.numbersCheck(text, known);
+      if (c.kind === 'skills-order') {
+        var bad = RT.unknownSkills(c.decision === 'edited' ? (lastDoc.skills ? lastDoc.skills.list : []) : c.list, ws.profile);
+        c.numbersCheck = { ok: !bad.length, unmatched: bad };
+      }
+    });
+
+    job.coverageAfter = hits.coverage;
+
+    $('t-title').textContent = (job.title || 'Untitled job') + (job.company ? ' · ' + job.company : '');
+    var chips = $('t-chips');
+    chips.textContent = '';
+    addChip(chips, 'role=' + (job.role || '?'), true);
+    addChip(chips, 'stage=' + ws.settings.careerStage);
+    addChip(chips, 'pages=' + ws.settings.pageTarget + ' A4');
+    if (t.version) addChip(chips, 'v' + t.version);
+
+    $('t-version').textContent = t.version
+      ? 'tailored v' + t.version + ' · ' + pending + ' pending · ' + decided + ' decided'
+      : 'not tailored yet · showing your profile as it stands';
+    $('t-tailor').textContent = t.version ? 'Re-tailor' : 'Tailor';
+    $('t-tailor').disabled = busy || !apiKey;
+    $('t-export').disabled = busy;
+
+    renderRequirements(job, $('t-requirements'), hits.counts);
+    renderPage(job, lastDoc, blocks);
+    var fit = measureFit(job);
+    renderTailorStrip(job, hits, fit);
+    renderInspector(job, blocks);
+    renderLint(job);
+  }
+
+  function renderTailorStrip(job, hits, fit) {
+    var pct = Math.round(hits.coverage * 100);
+    $('t-coverage').textContent = pct + '%';
+    var bar = $('t-coverage-bar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct >= 75 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
+
+    // Structural checks 1 to 9 hold by construction of the template. 10 and
+    // 11 are checked here. 12 (the exported PDF extracts in order) needs the
+    // PDF, which is the next milestone.
+    var dates = [];
+    lastDoc.sections.forEach(function (s) { s.items.forEach(function (it) { dates.push(it.dates.start, it.dates.end); }); });
+    var datesOk = dates.filter(Boolean).every(function (d) { return /^(\d{2}\/\d{4}|\d{4}|Present)$/.test(d); });
+    var pagesOk = fit.pages <= ws.settings.pageTarget;
+    var safe = 9 + (datesOk ? 1 : 0) + (pagesOk ? 1 : 0);
+    $('t-safety').textContent = safe + '/12';
+    $('t-safety-sub').textContent = safe === 11 ? 'pdf not checked yet' : (!pagesOk ? 'over page target' : 'dates inconsistent');
+    $('t-safety-bar').style.width = Math.round(safe / 12 * 100) + '%';
+    $('t-safety-bar').style.background = safe >= 11 ? 'var(--green)' : 'var(--amber)';
+
+    var byKind = {};
+    lastLint.forEach(function (f) { byKind[f.kind] = (byKind[f.kind] || 0) + 1; });
+    var unmatched = job.tailored.changes.filter(function (c) { return c.numbersCheck && !c.numbersCheck.ok; }).length;
+    var flags = lastLint.length + unmatched;
+    $('t-flags').textContent = String(flags);
+    var subs = Object.keys(byKind).map(function (k) { return byKind[k] + ' ' + k; });
+    if (unmatched) subs.unshift(unmatched + ' unsourced');
+    $('t-flags-sub').textContent = subs.slice(0, 3).join(' · ') || 'none';
+    $('t-flags-bar').style.width = Math.min(100, flags * 10) + '%';
+    $('t-flags-bar').style.background = unmatched ? 'var(--red)' : flags ? 'var(--amber)' : 'var(--green)';
+
+    $('t-fit').textContent = fit.percent + '%';
+    $('t-fit-sub').textContent = fit.pages > ws.settings.pageTarget
+      ? 'over by ' + fit.overLines + (fit.overLines === 1 ? ' line' : ' lines')
+      : 'of page ' + ws.settings.pageTarget;
+    $('t-fit-bar').style.width = Math.min(100, fit.percent) + '%';
+    $('t-fit-bar').style.background = fit.pages > ws.settings.pageTarget ? 'var(--red)' : 'var(--accent)';
+    $('t-trim').hidden = !(fit.pages > ws.settings.pageTarget && job.tailored.version);
+  }
+
+  /* Flow a list of nodes onto A4 sheets, the way a word processor does: fill
+     a sheet, and when a node no longer fits, start the next sheet with it.
+     A node marked keepWithNext (a heading, an item head) is carried over with
+     the node after it, so no heading is left alone at the foot of a page.
+     Bullets (li) are wrapped in a ul per sheet, so a list can continue over.
+     Layout is measured live, which is why the nodes go into the DOM first. */
+  function paginate(host, nodes) {
+    host.textContent = '';
+    var page, inner, ul, placed;
+    function newPage() {
+      page = el('div', 'page');
+      inner = el('div', 'p-inner');
+      page.appendChild(inner);
+      host.appendChild(page);
+      ul = null;
+      placed = [];
+    }
+    function place(node) {
+      if (node.tagName === 'LI') {
+        if (!ul) { ul = document.createElement('ul'); inner.appendChild(ul); }
+        ul.appendChild(node);
+      } else {
+        ul = null;
+        inner.appendChild(node);
+      }
+      placed.push(node);
+    }
+    function unplace() {
+      var node = placed.pop();
+      var parent = node.parentNode;
+      node.remove();
+      if (parent.tagName === 'UL' && !parent.childNodes.length) { parent.remove(); if (ul === parent) ul = null; }
+      return node;
+    }
+    newPage();
+    nodes.forEach(function (node) {
+      place(node);
+      var limit = inner.getBoundingClientRect().bottom + 0.5;
+      if (node.getBoundingClientRect().bottom <= limit || placed.length === 1) return;
+      var carry = [unplace()];
+      while (placed.length > 1 && placed[placed.length - 1].keepWithNext) carry.unshift(unplace());
+      newPage();
+      carry.forEach(place);
+    });
+    return host.querySelectorAll('.page').length;
+  }
+
+  function keep(node) { node.keepWithNext = true; return node; }
+
+  /* The page is built with createElement only. Everything in it came either
+     from the person's own PDF or from the model, and neither is trusted as HTML. */
+  function renderPage(job, doc, blocks) {
+    var flow = [];
+    var re = termRegex(job.analysis.requirements);
+    var flagsByBlock = {};
+    lastLint.forEach(function (f) { (flagsByBlock[f.blockId] = flagsByBlock[f.blockId] || []).push(f); });
+
+    function badge(text, cls) { return el('span', 'p-badge ' + cls, text); }
+
+    function decorate(node, block) {
+      node.classList.add('sel');
+      node.dataset.block = block.id;
+      var c = findChange(job, block.changeId);
+      if (c) node.classList.add(c.decision);
+      if (block.id === selectedBlockId) node.classList.add('selected');
+      node.setAttribute('tabindex', '-1');
+      node.addEventListener('click', function () {
+        if (editingBlockId) return;
+        selectedBlockId = block.id;
+        renderTailor();
+      });
+      node.addEventListener('dblclick', function () { startEdit(block); });
+    }
+
+    function fill(node, block) {
+      if (editingBlockId === block.id) {
+        var box = document.createElement('textarea');
+        box.className = 'p-edit';
+        box.value = block.text;
+        box.rows = Math.max(2, Math.ceil(block.text.length / 90));
+        box.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') { e.preventDefault(); editingBlockId = null; renderTailor(); }
+          else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(job, block, box.value); }
+        });
+        box.addEventListener('blur', function () { if (editingBlockId === block.id) saveEdit(job, block, box.value); });
+        node.appendChild(box);
+        setTimeout(function () { box.focus(); box.select(); }, 0);
+        return;
+      }
+      highlight(node, block.text, re);
+      var c = findChange(job, block.changeId);
+      if (c && c.decision === 'pending') node.appendChild(badge(c.kind === 'hide' ? 'hide?' : c.id, 'accent'));
+      if (c && c.numbersCheck && !c.numbersCheck.ok) node.appendChild(badge('unsourced ' + c.numbersCheck.unmatched.join(', '), 'red'));
+      (flagsByBlock[block.id] || []).slice(0, 2).forEach(function (f) {
+        node.appendChild(badge(f.kind, f.kind === 'ai-tell' ? 'red' : 'amber'));
+      });
+    }
+
+    var byId = {};
+    blocks.forEach(function (b) { byId[b.id] = b; });
+
+    var head = keep(el('div', 'p-head'));
+    head.appendChild(el('p', 'p-name', doc.basics.name || 'Your name'));
+    if (byId.headline) { var h = el('p', 'p-headline'); decorate(h, byId.headline); fill(h, byId.headline); head.appendChild(h); }
+    var contact = [
+      [doc.basics.city, doc.basics.state].filter(Boolean).join(' '),
+      doc.basics.phone, doc.basics.email, doc.basics.linkedin, doc.basics.portfolio, doc.workRights
+    ].filter(Boolean).join(' · ');
+    head.appendChild(el('p', 'p-contact', contact));
+    flow.push(head);
+
+    if (byId.summary) {
+      flow.push(keep(el('h2', null, 'Summary')));
+      var sp = el('p', 'p-block'); decorate(sp, byId.summary); fill(sp, byId.summary); flow.push(sp);
+    }
+    if (byId.skills) {
+      flow.push(keep(el('h2', null, 'Key Skills')));
+      var kp = el('p', 'p-block p-skills'); decorate(kp, byId.skills); fill(kp, byId.skills); flow.push(kp);
+    }
+
+    doc.sections.forEach(function (s) {
+      flow.push(keep(el('h2', null, sectionTitle(s))));
+      s.items.forEach(function (it) {
+        var ih = keep(el('div', 'p-item-head'));
+        var left = el('div');
+        left.appendChild(el('b', null, it.heading));
+        if (it.subheading) left.appendChild(document.createTextNode(' · ' + it.subheading));
+        ih.appendChild(left);
+        var d = [it.dates.start, it.dates.end].filter(Boolean).join(' – ');
+        if (d) ih.appendChild(el('span', 'p-dates', d));
+        flow.push(ih);
+        it.bullets.filter(function (b) { return !b.hidden; }).forEach(function (b) {
+          var block = byId[b.id];
+          var li = document.createElement('li');
+          decorate(li, block);
+          fill(li, block);
+          flow.push(li);
+        });
+      });
+    });
+
+    if (doc.referees) flow.push(el('p', 'p-referees', 'Referees available on request.'));
+    paginate($('t-pagehost'), flow);
+
+    // "Too long" is a rendered property, so it is checked here, after layout.
+    $('t-pagehost').querySelectorAll('li.sel').forEach(function (li) {
+      if (li.offsetHeight > LINE_PX * 2.6) {
+        li.appendChild(badge('too-long', 'amber'));
+        lastLint.push({ blockId: li.dataset.block, changeId: null, kind: 'too-long', note: 'over two lines' });
+      }
+    });
+  }
+
+  function sectionTitle(s) {
+    var std = { experience: 'Experience', projects: 'Projects', education: 'Education', certifications: 'Certifications' };
+    return std[s.kind] || s.title;
+  }
+
+  /* How full the document is against the page target, from the real sheets. */
+  function measureFit(job) {
+    var sheets = $('t-pagehost').querySelectorAll('.page');
+    var pages = sheets.length || 1;
+    var last = sheets[pages - 1];
+    var inner = last ? last.querySelector('.p-inner') : null;
+    var used = 0;
+    if (inner && inner.lastElementChild) {
+      used = inner.lastElementChild.getBoundingClientRect().bottom - inner.getBoundingClientRect().top;
+    }
+    var printable = inner ? inner.getBoundingClientRect().height : PRINTABLE;
+    var content = (pages - 1) * printable + used;
+    var target = ws.settings.pageTarget;
+    var over = content - printable * target;
+    lastFit = {
+      pages: pages,
+      percent: Math.round(content / (printable * target) * 100),
+      overLines: over > 0 ? Math.ceil(over / LINE_PX) : 0
+    };
+    return lastFit;
+  }
+
+  function termRegex(requirements) {
+    var terms = adTerms(requirements).map(function (t) { return escapeRe(t.term); });
+    if (!terms.length) return null;
+    try { return new RegExp('(?<![\\w-])(' + terms.join('|') + ')(?![\\w-])', 'gi'); } catch (e) { return null; }
+  }
+
+  function highlight(host, text, re) {
+    if (!re) { host.appendChild(document.createTextNode(text)); return; }
+    var last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) host.appendChild(document.createTextNode(text.slice(last, m.index)));
+      host.appendChild(el('span', 'p-kw', m[0]));
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) host.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  /* Clicking a requirement on the tailor screen jumps to its first mention. */
+  function focusTerm(r) {
+    var re = termRegex([r]);
+    if (!re) return false;
+    var nodes = $('t-pagehost').querySelectorAll('.sel');
+    for (var i = 0; i < nodes.length; i++) {
+      re.lastIndex = 0;
+      if (re.test(nodes[i].textContent)) {
+        selectedBlockId = nodes[i].dataset.block;
+        renderTailor();
+        var hit = $('t-pagehost').querySelector('.sel.selected');
+        if (hit) hit.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /* ------------------------------------------------------------ inspector */
+
+  function pendingChanges(job) {
+    return job.tailored.changes.filter(function (c) { return c.decision === 'pending'; });
+  }
+
+  function renderInspector(job, blocks) {
+    var host = $('t-inspector');
+    host.textContent = '';
+    var block = null;
+    blocks.forEach(function (b) { if (b.id === selectedBlockId) block = b; });
+    var c = block ? findChange(job, block.changeId) : null;
+    var pend = pendingChanges(job);
+    var pos = c ? pend.indexOf(c) : -1;
+
+    $('t-change-title').textContent = c ? 'Change ' + c.id : (block ? 'Block ' + block.id : 'Changes');
+    $('t-change-pos').textContent = pos >= 0 ? (pos + 1) + ' of ' + pend.length + ' pending' : (pend.length ? pend.length + ' pending' : '');
+
+    if (!block) {
+      var body = el('div', 'panel-body');
+      body.appendChild(el('p', 'empty-note', job.tailored.version
+        ? (pend.length ? 'Click a highlighted block, or press J to step to the first pending change.' : 'No pending changes. Re-tailor to ask for more, or export.')
+        : 'Press Tailor to get a set of proposed changes for this ad. Each one comes with a reason and a source, and nothing is applied until you accept it.'));
+      host.appendChild(body);
+      return;
+    }
+
+    if (c) {
+      var diff = el('div', 'diff');
+      var parts = wordDiff(c.original, c.kind === 'hide' ? '' : (c.decision === 'edited' ? c.editedText : c.suggested));
+      if (c.kind === 'reorder') {
+        diff.appendChild(el('p', 'note', 'Reorders the bullets in this item. Compare the page with your profile order.'));
+      } else {
+        if (c.original) diff.appendChild(diffLine('minus', parts.pre, parts.a, parts.post, 'del'));
+        if (c.kind !== 'hide') diff.appendChild(diffLine('plus', parts.pre, parts.b, parts.post, 'ins'));
+        else diff.appendChild(el('p', 'note', 'Hidden from this version. Your profile keeps it.'));
+      }
+      host.appendChild(diff);
+
+      var meta = el('div', 'inspect-body');
+      meta.appendChild(field('decision', el('span', 'decision-chip ' + c.decision, c.decision + (c.kind === 'headline' ? ' · headline change' : ''))));
+      if (c.why) meta.appendChild(field('why', el('div', null, c.why)));
+      meta.appendChild(field('sources', sourcesGrid(job, c)));
+      var nc = el('div', 'numcheck');
+      nc.appendChild(makeDot(c.numbersCheck && c.numbersCheck.ok ? 'ok' : 'bad'));
+      nc.appendChild(document.createTextNode(c.numbersCheck && c.numbersCheck.ok
+        ? (c.kind === 'skills-order' ? 'every skill is in your profile' : (RT.numbersIn(RT.effectiveText(c) || '').length ? 'every number is on record' : 'no numbers in this text'))
+        : 'not in your profile: ' + c.numbersCheck.unmatched.join(', ')));
+      meta.appendChild(field(c.kind === 'skills-order' ? 'skills check' : 'numbers check', nc));
+      host.appendChild(meta);
+
+      var decide3 = el('div', 'decide');
+      decide3.appendChild(decideBtn('Accept', 'A', 'btn-green', c.decision === 'accepted', function () { decide(job, c, 'accepted'); }));
+      decide3.appendChild(decideBtn('Reject', 'R', 'btn-ghost', c.decision === 'rejected', function () { decide(job, c, 'rejected'); }));
+      decide3.appendChild(decideBtn('Edit', 'E', 'btn-ghost', false, function () { startEdit(block); }));
+      host.appendChild(decide3);
+
+      var pn = el('div', 'prevnext mono');
+      var prev = el('button', 'link-btn', '← prev (K)'); prev.type = 'button';
+      prev.addEventListener('click', function () { stepChange(job, -1); });
+      var next = el('button', 'link-btn', 'next (J) →'); next.type = 'button';
+      next.addEventListener('click', function () { stepChange(job, 1); });
+      pn.appendChild(prev); pn.appendChild(next);
+      host.appendChild(pn);
+    } else {
+      var plain = el('div', 'inspect-body');
+      plain.appendChild(field('text', el('div', 'readonly-box', block.text)));
+      plain.appendChild(field('source', el('div', null, block.isBullet
+        ? (ws.profile.bullets[block.id].source.type === 'gap' ? 'Your answer to a gap question' : 'Your resume, unchanged')
+        : 'Your profile, unchanged')));
+      host.appendChild(plain);
+    }
+
+    var menu = el('div', 'blockmenu');
+    menu.appendChild(linkBtn('Edit (E)', function () { startEdit(block); }));
+    if (block.isBullet) {
+      menu.appendChild(linkBtn(block.hideId && findChange(job, block.hideId).decision !== 'rejected' ? 'Unhide' : 'Hide from this version', function () { toggleHide(job, block); }));
+      menu.appendChild(linkBtn('Move up', function () { moveBullet(job, block, -1); }));
+      menu.appendChild(linkBtn('Move down', function () { moveBullet(job, block, 1); }));
+    }
+    menu.appendChild(linkBtn('Undo (Ctrl+Z)', function () { undo(job); }));
+    host.appendChild(menu);
+  }
+
+  function field(label, node) {
+    var f = el('div', 'field');
+    f.appendChild(el('span', 'field-label mono', label));
+    f.appendChild(node);
+    return f;
+  }
+
+  function linkBtn(text, fn) {
+    var b = el('button', 'link-btn', text);
+    b.type = 'button';
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  function decideBtn(text, key, cls, current, fn) {
+    var b = el('button', 'btn ' + cls, text);
+    b.type = 'button';
+    b.appendChild(el('span', 'key', key));
+    if (current) b.setAttribute('aria-pressed', 'true');
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  function diffLine(cls, pre, mid, post, tag) {
+    var line = el('div', 'diff-line ' + cls);
+    line.appendChild(el('span', 'sign', cls === 'minus' ? '−' : '+'));
+    var body = el('div');
+    if (pre) body.appendChild(document.createTextNode(pre));
+    if (mid) body.appendChild(el(tag, null, mid));
+    if (post) body.appendChild(document.createTextNode(post));
+    line.appendChild(body);
+    return line;
+  }
+
+  /* Common prefix and suffix by word: enough to show what actually changed
+     in a rewritten bullet without a diff library. */
+  function wordDiff(a, b) {
+    var wa = String(a || '').split(/(\s+)/), wb = String(b || '').split(/(\s+)/);
+    var p = 0;
+    while (p < wa.length && p < wb.length && wa[p] === wb[p]) p++;
+    var s = 0;
+    while (s < wa.length - p && s < wb.length - p && wa[wa.length - 1 - s] === wb[wb.length - 1 - s]) s++;
+    return {
+      pre: wa.slice(0, p).join(''),
+      a: wa.slice(p, wa.length - s).join(''),
+      b: wb.slice(p, wb.length - s).join(''),
+      post: wa.slice(wa.length - s).join('')
+    };
+  }
+
+  function sourcesGrid(job, c) {
+    var grid = el('div', 'kv');
+    if (!c.sources.length) {
+      grid.appendChild(el('div', 'kv-key mono', 'none'));
+      grid.appendChild(el('div', 'muted', 'No source given. Treat this change with suspicion.'));
+    }
+    c.sources.forEach(function (s) {
+      var label = s.type, text = s.id;
+      if (s.type === 'user') { label = 'you'; text = 'Your own edit.'; }
+      else if (s.type === 'ad') {
+        var r = null;
+        job.analysis.requirements.forEach(function (x) { if (x.id === s.id) r = x; });
+        label = 'ad';
+        text = r ? r.name + ' · weight ' + r.weight : s.id;
+      } else {
+        var b = ws.profile.bullets[s.id];
+        label = b && b.source.type === 'gap' ? 'gap answer' : 'profile';
+        text = b ? s.id + ' · ' + (b.text.length > 90 ? b.text.slice(0, 87) + '...' : b.text) : s.id + ' · no longer in the profile';
+      }
+      grid.appendChild(el('div', 'kv-key mono', label));
+      grid.appendChild(el('div', null, text));
+    });
+    return grid;
+  }
+
+  function renderLint(job) {
+    var host = $('t-lint');
+    host.textContent = '';
+    var unmatched = job.tailored.changes.filter(function (c) { return c.numbersCheck && !c.numbersCheck.ok; });
+    $('t-lint-count').textContent = (lastLint.length + unmatched.length) + ' flags';
+    if (!lastLint.length && !unmatched.length) {
+      host.appendChild(el('p', 'empty-note', 'No flags. Metrics, verbs, spelling and AI-tell words all pass.'));
+      return;
+    }
+    unmatched.forEach(function (c) {
+      var row = el('div', 'lintrow');
+      row.appendChild(el('span', 'kind red', 'unsourced'));
+      row.appendChild(el('span', 'grow', c.id + ': ' + c.numbersCheck.unmatched.join(', ')));
+      row.addEventListener('click', function () { selectedBlockId = blockIdForChange(c); renderTailor(); });
+      host.appendChild(row);
+    });
+    lastLint.forEach(function (f) {
+      var row = el('div', 'lintrow');
+      row.appendChild(el('span', 'kind ' + (f.kind === 'ai-tell' ? 'red' : 'amber'), f.kind));
+      row.appendChild(el('span', 'grow', f.blockId + ': ' + f.note));
+      row.addEventListener('click', function () { selectedBlockId = f.blockId; renderTailor(); });
+      host.appendChild(row);
+    });
+  }
+
+  /* ------------------------------------------------------------ actions */
+
+  function startEdit(block) {
+    if (!block || busy) return;
+    selectedBlockId = block.id;
+    editingBlockId = block.id;
+    renderTailor();
+  }
+
+  function stepChange(job, dir) {
+    var pend = pendingChanges(job);
+    if (!pend.length) { toast('No pending changes.'); return; }
+    var blocks = RT.docBlocks(lastDoc);
+    var current = null;
+    blocks.forEach(function (b) { if (b.id === selectedBlockId) current = b; });
+    var c = current ? findChange(job, current.changeId) : null;
+    var i = c ? pend.indexOf(c) : -1;
+    var next = pend[(i + dir + pend.length) % pend.length];
+    selectedBlockId = blockIdForChange(next);
+    renderTailor();
+    var hit = $('t-pagehost').querySelector('.sel.selected');
+    if (hit) hit.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function selectedBlock() {
+    var out = null;
+    RT.docBlocks(lastDoc).forEach(function (b) { if (b.id === selectedBlockId) out = b; });
+    return out;
+  }
+
+  function tailorKeys(e) {
+    var job = currentJob();
+    if (!job || editingBlockId) return;
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (tag === 'button' && (e.key === 'Enter' || e.key === ' ')) return; // let the button click
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo(job) : undo(job); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(job); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var block = selectedBlock();
+    var c = block ? findChange(job, block.changeId) : null;
+    switch (e.key) {
+      case 'j': case 'J': case 'ArrowDown': stepChange(job, 1); break;
+      case 'k': case 'K': case 'ArrowUp': stepChange(job, -1); break;
+      case 'a': case 'A': if (c) decide(job, c, 'accepted'); break;
+      case 'r': case 'R': if (c) decide(job, c, 'rejected'); break;
+      case 'e': case 'E': case 'Enter': if (block) startEdit(block); break;
+      case 'Escape': selectedBlockId = null; renderTailor(); break;
+      default: return;
+    }
+    e.preventDefault();
+  }
+
+  /* Print the sheets alone. Each sheet is exactly A4 and carries its own
+     margins as padding, so @page margin is zero and the browser adds no
+     header or footer. */
+  function exportPdf() {
+    var job = currentJob();
+    if (!job) return;
+    var root = document.createElement('div');
+    root.id = 'print-root';
+    $('t-pagehost').querySelectorAll('.page').forEach(function (p) {
+      var clone = p.cloneNode(true);
+      clone.querySelectorAll('.p-badge, .p-edit').forEach(function (n) { n.remove(); });
+      root.appendChild(clone);
+    });
+    document.body.appendChild(root);
+    function done() {
+      root.remove();
+      window.removeEventListener('afterprint', done);
+      job.status = 'exported';
+      RT.stamp(job);
+      flushSave();
+      renderTailor();
+    }
+    window.addEventListener('afterprint', done);
+    window.print();
+  }
+
+  function wireTailor() {
+    $('t-back').addEventListener('click', closeTailor);
+    $('t-tailor').addEventListener('click', function () { runTailor(this, 0); });
+    $('t-trim').addEventListener('click', function () {
+      runTailor(this, Math.max(1, lastFit ? lastFit.overLines : 1));
+    });
+    $('t-export').addEventListener('click', exportPdf);
+    document.addEventListener('keydown', function (e) { if (tailorOpen) tailorKeys(e); });
   }
 
   /* ---------------------------------------------------------------- render */
@@ -1396,8 +2209,9 @@
   var CENTRE_MIN = 300;
 
   var LAYOUT_DEFAULTS = {
-    'screen-profile': { left: 400, right: 380 },
+    'screen-profile': { left: 300, right: 320 }, // leaves room for a real A4 sheet at 1440
     'screen-jobs': { left: 300, right: 460 },
+    'screen-tailor': { left: 300, right: 310 }, // leaves room for a real A4 page at 1440
     'screen-letters': { left: 360, right: 380 }
   };
   // Once an ad is analysed the right panel carries the requirements and the
@@ -1531,6 +2345,9 @@
       $(s.nav).setAttribute('aria-selected', on ? 'true' : 'false');
       $(s.panel).hidden = !on;
     });
+    // The tailor is a phase of the Jobs screen, reached from a job, never from the nav.
+    tailorOpen = false;
+    $('screen-tailor').hidden = true;
   }
 
   /* ----------------------------------------------------------------- wire */
@@ -1634,6 +2451,8 @@
       renderJobs();
       if (adEditing) $('job-ad').focus();
     });
+
+    wireTailor();
 
     $('btn-export').addEventListener('click', exportWorkspace);
     $('btn-import').addEventListener('click', function () { $('import-file').click(); });

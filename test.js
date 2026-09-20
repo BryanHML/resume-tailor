@@ -199,4 +199,126 @@ test('retired bullets stay out of the inventory sent to the model', function () 
   assert.ok(RT.inventoryLines(p).indexOf('b1:') === -1, 'a retired bullet is not offered as evidence');
 });
 
+/* ---- tailoring: profile + changes → document, and the checks over it ---- */
+
+function sampleProfile() {
+  var p = RT.buildProfile({
+    basics: { name: 'Sam Taylor', city: 'Melbourne', state: 'VIC', phone: '', email: '', linkedin: '', portfolio: '' },
+    summary: 'Graduate analyst.',
+    skills: [{ group: 'Tools', items: ['SQL', 'Power BI', 'Excel'] }],
+    sections: [
+      { kind: 'experience', title: 'EXPERIENCE', items: [{ heading: 'Retail Assistant', subheading: 'Shop', dateStart: '03/2022', dateEnd: '11/2024',
+        bullets: [{ text: 'Reported weekly stock discrepancies, cutting recount time by 2 hours a week.', tags: [], roles: [], numbers: [{ value: '2 hours', what: 'time saved' }] }] }] },
+      { kind: 'projects', title: 'PROJECTS', items: [{ heading: 'Churn analysis', subheading: 'Capstone', dateStart: '', dateEnd: '2025',
+        bullets: [
+          { text: 'Analysed churn data using Python and SQL to find drivers of customer loss.', tags: [], roles: [], numbers: [] },
+          { text: 'Built a Power BI dashboard for weekly reporting.', tags: [], roles: [], numbers: [] }
+        ] }] }
+    ],
+    parseReview: []
+  }, {});
+  p.bullets.g1 = { id: 'g1', text: 'Analysed 40,000 customer records for a 12% annual loss.', tags: [], roles: [], numbers: [],
+    source: { type: 'gap', jobId: 'j1', date: '' }, retired: false };
+  return p;
+}
+
+var junior = Object.assign(RT.defaultSettings(), { careerStage: 'junior' });
+
+test('normaliseChanges fills original from the profile and drops changes it cannot apply', function () {
+  var p = sampleProfile();
+  var out = RT.normaliseChanges([
+    { kind: 'rewrite', bulletId: 'b2', suggested: 'Analysed 40,000 customer records in SQL.', why: 'w', sources: [{ type: 'profile', id: 'b2' }] },
+    { kind: 'rewrite', bulletId: 'b99', suggested: 'ghost', why: '', sources: [] },
+    { kind: 'rewrite', bulletId: 'b3', suggested: 'Built a Power BI dashboard for weekly reporting.', why: 'no-op', sources: [] },
+    { kind: 'add-from-inventory', itemId: 's2i1', bulletId: 'g1', why: 'gap answer', sources: [{ type: 'gap', id: 'g1' }] },
+    { kind: 'reorder', itemId: 's2i1', list: ['b3', 'b2'], why: 'F-pattern', sources: [] },
+    { kind: 'reorder', itemId: 's2i1', list: ['b3'], why: 'lost one', sources: [] },
+    { kind: 'headline', suggested: 'Junior Data Analyst', why: '', sources: [] },
+    { kind: 'nonsense', suggested: 'x', why: '', sources: [] }
+  ], p, []);
+  assert.deepStrictEqual(out.map(function (c) { return c.kind; }), ['rewrite', 'add-from-inventory', 'reorder', 'headline']);
+  assert.strictEqual(out[0].original, p.bullets.b2.text, 'original comes from the profile, not the model');
+  assert.strictEqual(out[0].decision, 'pending');
+  assert.strictEqual(out[1].target.sectionId, 's2');
+});
+
+test('an accepted change is never overridden by a re-tailor', function () {
+  var p = sampleProfile();
+  var first = RT.normaliseChanges([{ kind: 'rewrite', bulletId: 'b2', suggested: 'Accepted wording.', why: '', sources: [] }], p, []);
+  first[0].decision = 'accepted';
+  var second = RT.normaliseChanges([
+    { kind: 'rewrite', bulletId: 'b2', suggested: 'A different wording.', why: '', sources: [] },
+    { kind: 'hide', bulletId: 'b2', why: '', sources: [] },
+    { kind: 'rewrite', bulletId: 'b3', suggested: 'New bullet three.', why: '', sources: [] }
+  ], p, first);
+  assert.strictEqual(second.length, 1);
+  assert.strictEqual(second[0].target.bulletId, 'b3');
+  assert.strictEqual(second[0].id, 'c2', 'ids keep counting from the existing list');
+  var doc = RT.buildDoc(p, { changes: first.concat(second) }, junior);
+  assert.strictEqual(doc.sections[0].items[0].bullets[0].text, 'Accepted wording.');
+});
+
+test('buildDoc applies decisions: pending shows, rejected reverts, edited wins, hidden hides', function () {
+  var p = sampleProfile();
+  var changes = RT.normaliseChanges([
+    { kind: 'rewrite', bulletId: 'b2', suggested: 'Pending text.', why: '', sources: [] },
+    { kind: 'rewrite', bulletId: 'b3', suggested: 'Rejected text.', why: '', sources: [] },
+    { kind: 'hide', bulletId: 'b1', why: '', sources: [] },
+    { kind: 'summary', suggested: 'Edited later.', why: '', sources: [] }
+  ], p, []);
+  changes[1].decision = 'rejected';
+  changes[2].decision = 'accepted';
+  changes[3].decision = 'edited';
+  changes[3].editedText = 'My own summary.';
+  var doc = RT.buildDoc(p, { changes: changes }, junior);
+  assert.strictEqual(doc.sections[0].kind, 'projects', 'junior puts projects above experience');
+  assert.strictEqual(doc.sections[1].kind, 'experience');
+  var proj = doc.sections[0].items[0].bullets;
+  assert.strictEqual(proj[0].text, 'Pending text.');
+  assert.strictEqual(proj[1].text, p.bullets.b3.text, 'rejected falls back to the profile wording');
+  assert.strictEqual(doc.sections[1].items[0].bullets[0].hidden, true);
+  changes[2].decision = 'pending';
+  assert.strictEqual(RT.buildDoc(p, { changes: changes }, junior).sections[1].items[0].bullets[0].hidden, false, 'a pending hide still shows, so it can be judged');
+  assert.strictEqual(doc.summary.text, 'My own summary.');
+  assert.strictEqual(RT.buildDoc(p, { changes: changes }, Object.assign({}, junior, { careerStage: 'senior' })).sections[0].kind, 'experience');
+});
+
+test('numbersCheck only passes numbers already on record', function () {
+  var p = sampleProfile();
+  var known = RT.profileNumbers(p);
+  assert.deepStrictEqual(RT.numbersCheck('Cut recount time by 2 hours across 40,000 records in 2025.', known), { ok: true, unmatched: [] });
+  var bad = RT.numbersCheck('Improved accuracy by 35% for 1,200 users.', known);
+  assert.deepStrictEqual(bad.unmatched, ['35', '1200']);
+  assert.deepStrictEqual(RT.unknownSkills(['SQL', 'Snowflake', 'python'], p), ['Snowflake']);
+});
+
+test('lint flags ai-tell, US spelling, weak verbs and missing metrics, but not spellings the ad uses', function () {
+  var p = sampleProfile();
+  var changes = RT.normaliseChanges([
+    { kind: 'rewrite', bulletId: 'b2', suggested: 'Leveraged Python to optimize the model — twice.', why: '', sources: [] },
+    { kind: 'rewrite', bulletId: 'b3', suggested: 'Responsible for dashboards.', why: '', sources: [] }
+  ], p, []);
+  var doc = RT.buildDoc(p, { changes: changes }, junior);
+  var kinds = RT.lintDoc(doc, '').filter(function (f) { return f.blockId === 'b2' || f.blockId === 'b3'; })
+    .map(function (f) { return f.blockId + ':' + f.kind; }).sort();
+  assert.deepStrictEqual(kinds, ['b2:ai-tell', 'b2:ai-tell', 'b2:en-AU', 'b3:no-metric', 'b3:weak-verb']);
+  var withAd = RT.lintDoc(doc, 'You will optimize pipelines.').filter(function (f) { return f.kind === 'en-AU'; });
+  assert.strictEqual(withAd.length, 0, 'the ad spells it the US way, so mirror it');
+});
+
+test('keywordHits counts aliases with word boundaries and treats en-AU and US spelling as equal', function () {
+  var reqs = [
+    { id: 'r1', name: 'SQL', weight: 10, aliases: ['T-SQL'] },
+    { id: 'r2', name: 'Data visualisation', weight: 5, aliases: ['data visualization'] },
+    { id: 'r3', name: 'R', weight: 5, aliases: [] },
+    { id: 'r4', name: 'Snowflake', weight: 5, aliases: [] }
+  ];
+  var hits = RT.keywordHits('Wrote SQL and T-SQL for data visualisation. Our reports were clear.', reqs);
+  assert.strictEqual(hits.counts.r1, 2);
+  assert.strictEqual(hits.counts.r2, 1);
+  assert.strictEqual(hits.counts.r3, 0, 'the R in "Our" and "reports" does not count');
+  assert.strictEqual(hits.counts.r4, 0);
+  assert.strictEqual(hits.coverage, 0.6);
+});
+
 if (!process.exitCode) console.log('\nall passing');

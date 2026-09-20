@@ -4,6 +4,7 @@
    Usage:
      node tools/run.mjs extract "Bryan Ho - Resume.pdf" [model] [effort]
      node tools/run.mjs analyse Junior_Data_Analyst_ad.txt [model] [effort]
+     node tools/run.mjs tailor Junior_Data_Analyst_ad.txt [model] [effort]
      node tools/run.mjs cost
 
    Every run appends what it spent to fixtures/spend.json, because the budget
@@ -145,5 +146,64 @@ if (command === 'analyse') {
   process.exit(0);
 }
 
-console.log('commands: extract <pdf> | analyse <ad.txt> | cost');
+if (command === 'tailor') {
+  // Builds the same request the browser would from the saved fixtures:
+  // extract.json for the profile, analyse-<ad>.json for the requirements.
+  const extracted = JSON.parse(fs.readFileSync(path.join(OUT, 'extract.json'), 'utf8'));
+  const profile = Core.buildProfile(extracted, { type: 'pdf', filename: 'fixture' });
+  const adName = path.basename(arg, '.txt');
+  const analysis = JSON.parse(fs.readFileSync(path.join(OUT, `analyse-${adName}.json`), 'utf8'));
+  const adText = fs.readFileSync(path.join(ROOT, arg), 'utf8');
+  const settings = Core.defaultSettings();
+  const requirements = analysis.requirements.map((r, i) => ({ id: `r${i + 1}`, ...r }));
+  const doc = Core.buildDoc(profile, Core.newTailored(), settings);
+
+  const body = Claude.tailorRequest({
+    prompts: Prompts, model, effort,
+    careerStage: settings.careerStage, pageTarget: settings.pageTarget,
+    currentLines: Core.estimateLines(doc),
+    role: analysis.role, shape: analysis.shape, title: adName.replace(/_/g, ' '), company: '',
+    requirements,
+    outline: Core.outlineForModel(profile),
+    inventory: Core.inventoryLines(profile),
+    skills: Core.skillLines(profile),
+    summary: profile.summary,
+    locked: [], rejected: [], trimLines: 0, adText
+  });
+
+  const estimated = await Claude.countTokens(key, body);
+  console.log(`input ${estimated} tokens (counted free) · ${model} · effort ${effort} · doc ~${Core.estimateLines(doc)} lines`);
+  console.log('calling...');
+
+  const t0 = Date.now();
+  const message = await Claude.send(key, body);
+  const result = Claude.readJson(message);
+  const seconds = ((Date.now() - t0) / 1000).toFixed(1);
+
+  const file = save(`tailor-${adName}.json`, result);
+  const l = record(`tailor ${adName.slice(0, 14)}`, model, message.usage);
+  console.log(`\ndone in ${seconds}s · in ${message.usage.input_tokens} out ${message.usage.output_tokens}` +
+    ` · ${Claude.money(Claude.cost(model, message.usage))} · running total ${Claude.money(l.total)}`);
+  console.log(`saved ${file}\n`);
+
+  const changes = Core.normaliseChanges(result.changes, profile, []);
+  console.log(`note: ${result.note}`);
+  console.log(`${result.changes.length} changes returned, ${changes.length} applicable`);
+  const known = Core.profileNumbers(profile);
+  const tailored = { changes };
+  const after = Core.buildDoc(profile, tailored, settings);
+  for (const c of changes) {
+    const text = c.kind === 'skills-order' ? c.list.join(' · ') : (c.kind === 'reorder' ? c.list.join(', ') : c.suggested);
+    const nc = c.kind === 'skills-order' ? Core.unknownSkills(c.list, profile) : c.kind === 'reorder' ? [] : Core.numbersCheck(text, known).unmatched;
+    console.log(`\n${c.id} ${c.kind} ${c.target.itemId || ''} ${c.target.bulletId || ''}` +
+      `${nc.length ? '  !! unsourced: ' + nc.join(', ') : ''}\n  ${text}\n  why: ${c.why}\n  sources: ${c.sources.map(s => s.type + ':' + s.id).join(' ')}`);
+  }
+  const hits = Core.keywordHits(Core.docText(after), requirements);
+  const before = Core.keywordHits(Core.docText(doc), requirements);
+  console.log(`\nkeyword coverage ${Math.round(before.coverage * 100)}% → ${Math.round(hits.coverage * 100)}% ` +
+    `· lines ~${Core.estimateLines(doc)} → ~${Core.estimateLines(after)} · lint flags ${Core.lintDoc(after, adText).length}`);
+  process.exit(0);
+}
+
+console.log('commands: extract <pdf> | analyse <ad.txt> | tailor <ad.txt> | cost');
 process.exit(1);
